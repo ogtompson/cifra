@@ -22,6 +22,16 @@ public class ApiExceptionHandler {
         return problema;
     }
 
+    @ExceptionHandler(RegraNegocioException.class)
+    public ProblemDetail tratarRegraNegocio(RegraNegocioException exception) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNPROCESSABLE_CONTENT,
+                exception.getMessage()
+        );
+        problema.setTitle("Regra de negócio violada");
+        return problema;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail tratarValidacao(MethodArgumentNotValidException exception) {
         Map<String, String> erros = new LinkedHashMap<>();

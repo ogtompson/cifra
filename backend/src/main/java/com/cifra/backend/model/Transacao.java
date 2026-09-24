@@ -22,7 +22,7 @@ public class Transacao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 150)
     private String descricao;
 
     @Column(nullable = false, precision = 12, scale = 2)
