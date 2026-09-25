@@ -13,6 +13,8 @@ import java.util.List;
 public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
     List<Transacao> findByContaIdOrderByDataDescIdDesc(Long contaId);
 
+    boolean existsByRecorrenciaId(Long recorrenciaId);
+
     @Query("""
             select coalesce(sum(transacao.valor), 0)
             from Transacao transacao
