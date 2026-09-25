@@ -2,22 +2,28 @@ package com.cifra.backend.service;
 
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Conta;
+import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
+import com.cifra.backend.repository.TransacaoRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ContaService {
 
     private final ContaRepository contaRepository;
+    private final TransacaoRepository transacaoRepository;
 
-    public ContaService(ContaRepository contaRepository) {
+    public ContaService(ContaRepository contaRepository, TransacaoRepository transacaoRepository) {
         this.contaRepository = contaRepository;
+        this.transacaoRepository = transacaoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -31,6 +37,25 @@ public class ContaService {
     @Transactional(readOnly = true)
     public ContaResponse buscarPorId(Long id) {
         return paraResponse(buscarEntidade(id));
+    }
+
+    @Transactional(readOnly = true)
+    public SaldoContaResponse calcularSaldo(Long id) {
+        Conta conta = buscarEntidade(id);
+        BigDecimal totalReceitas = valorOuZero(
+                transacaoRepository.somarValorPorContaETipo(id, TipoOperacao.RECEITA)
+        );
+        BigDecimal totalDespesas = valorOuZero(
+                transacaoRepository.somarValorPorContaETipo(id, TipoOperacao.DESPESA)
+        );
+        BigDecimal saldoAtual = conta.getSaldoInicial()
+                .add(totalReceitas)
+                .subtract(totalDespesas);
+
+        return new SaldoContaResponse(
+                conta.getId(), conta.getNome(), conta.getSaldoInicial(),
+                totalReceitas, totalDespesas, saldoAtual
+        );
     }
 
     @Transactional
@@ -72,5 +97,9 @@ public class ContaService {
                 conta.getSaldoInicial(),
                 conta.getTipo()
         );
+    }
+
+    private BigDecimal valorOuZero(BigDecimal valor) {
+        return valor == null ? BigDecimal.ZERO : valor;
     }
 }

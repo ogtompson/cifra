@@ -1,6 +1,7 @@
 package com.cifra.backend.controller;
 
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.exception.ApiExceptionHandler;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.enums.TipoConta;
@@ -89,5 +90,27 @@ class ContaControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Recurso não encontrado"))
                 .andExpect(jsonPath("$.detail").value("Conta não encontrada com o id 99"));
+    }
+
+    @Test
+    void deveRetornarSaldoConsolidadoDaConta() throws Exception {
+        when(contaService.calcularSaldo(1L))
+                .thenReturn(new SaldoContaResponse(
+                        1L,
+                        "Conta corrente",
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("2500.00"),
+                        new BigDecimal("750.00"),
+                        new BigDecimal("2750.00")
+                ));
+
+        mockMvc.perform(get("/api/contas/1/saldo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contaId").value(1))
+                .andExpect(jsonPath("$.contaNome").value("Conta corrente"))
+                .andExpect(jsonPath("$.saldoInicial").value(1000.00))
+                .andExpect(jsonPath("$.totalReceitas").value(2500.00))
+                .andExpect(jsonPath("$.totalDespesas").value(750.00))
+                .andExpect(jsonPath("$.saldoAtual").value(2750.00));
     }
 }

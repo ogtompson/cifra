@@ -2,10 +2,13 @@ package com.cifra.backend.service;
 
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.enums.TipoConta;
+import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
+import com.cifra.backend.repository.TransacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,11 +32,14 @@ class ContaServiceTest {
     @Mock
     private ContaRepository contaRepository;
 
+    @Mock
+    private TransacaoRepository transacaoRepository;
+
     private ContaService contaService;
 
     @BeforeEach
     void configurar() {
-        contaService = new ContaService(contaRepository);
+        contaService = new ContaService(contaRepository, transacaoRepository);
     }
 
     @Test
@@ -122,6 +128,43 @@ class ContaServiceTest {
         assertThatThrownBy(() -> contaService.buscarPorId(99L))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
                 .hasMessage("Conta não encontrada com o id 99");
+    }
+
+    @Test
+    void deveCalcularSaldoPeloTipoDasOperacoes() {
+        Conta conta = conta(1L, "Conta corrente", "1000.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.RECEITA))
+                .thenReturn(new BigDecimal("2500.00"));
+        when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.DESPESA))
+                .thenReturn(new BigDecimal("750.00"));
+
+        SaldoContaResponse resultado = contaService.calcularSaldo(1L);
+
+        assertThat(resultado).isEqualTo(new SaldoContaResponse(
+                1L,
+                "Conta corrente",
+                new BigDecimal("1000.00"),
+                new BigDecimal("2500.00"),
+                new BigDecimal("750.00"),
+                new BigDecimal("2750.00")
+        ));
+    }
+
+    @Test
+    void deveUsarSaldoInicialQuandoNaoHouverTransacoes() {
+        Conta conta = conta(1L, "Carteira", "80.00", TipoConta.DINHEIRO);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.RECEITA))
+                .thenReturn(BigDecimal.ZERO);
+        when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.DESPESA))
+                .thenReturn(BigDecimal.ZERO);
+
+        SaldoContaResponse resultado = contaService.calcularSaldo(1L);
+
+        assertThat(resultado.saldoAtual()).isEqualByComparingTo("80.00");
+        assertThat(resultado.totalReceitas()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(resultado.totalDespesas()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     private Conta conta(Long id, String nome, String saldoInicial, TipoConta tipo) {

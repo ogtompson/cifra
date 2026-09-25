@@ -2,6 +2,7 @@ package com.cifra.backend.controller;
 
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.service.ContaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,11 @@ public class ContaController {
     @GetMapping("/{id}")
     public ContaResponse buscarPorId(@PathVariable Long id) {
         return contaService.buscarPorId(id);
+    }
+
+    @GetMapping("/{id}/saldo")
+    public SaldoContaResponse buscarSaldo(@PathVariable Long id) {
+        return contaService.calcularSaldo(id);
     }
 
     @PostMapping
