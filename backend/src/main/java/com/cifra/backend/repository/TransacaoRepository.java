@@ -15,6 +15,8 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
 
     boolean existsByRecorrenciaId(Long recorrenciaId);
 
+    boolean existsByRecorrenciaIdAndData(Long recorrenciaId, LocalDate data);
+
     @Query("""
             select coalesce(sum(transacao.valor), 0)
             from Transacao transacao

@@ -15,7 +15,7 @@ import java.time.LocalDate;
 
 public record TransacaoRecorrenteRequest(
         @NotBlank(message = "A descrição é obrigatória")
-        @Size(max = 255, message = "A descrição deve ter no máximo 255 caracteres")
+        @Size(max = 150, message = "A descrição deve ter no máximo 150 caracteres")
         String descricao,
 
         @NotNull(message = "O valor é obrigatório")
