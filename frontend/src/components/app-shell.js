@@ -10,7 +10,7 @@ const navegacao = [
   { nome: "Contas", icone: "contas", href: "/contas", disponivel: true },
   { nome: "Transações", icone: "transacoes", href: "/transacoes", disponivel: true },
   { nome: "Categorias", icone: "categorias", href: "/categorias", disponivel: true },
-  { nome: "Recorrências", icone: "recorrencias", disponivel: false },
+  { nome: "Recorrências", icone: "recorrencias", href: "/recorrencias", disponivel: true },
 ];
 
 function ItemNavegacao({ item, ativo, mobile = false }) {
