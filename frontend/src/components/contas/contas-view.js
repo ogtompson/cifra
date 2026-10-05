@@ -111,7 +111,7 @@ function CartaoConta({ conta, aoEditar, aoExcluir }) {
   const saldoNegativo = Number(conta.saldoAtual) < 0;
 
   return (
-    <article className="paper-card group rounded-[1.4rem] p-5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,58,48,0.09)]">
+    <article className="paper-card group rounded-[1.4rem] p-4 transition hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,58,48,0.09)] sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary/10 text-secondary"><Icone nome="carteira" /></span>
@@ -126,12 +126,12 @@ function CartaoConta({ conta, aoEditar, aoExcluir }) {
         </div>
       </div>
 
-      <div className="mt-7">
+      <div className="mt-5 sm:mt-7">
         <p className="text-xs font-bold uppercase tracking-[0.13em] text-foreground-soft">Saldo atual</p>
         <p className={`mt-1 text-2xl font-extrabold tracking-tight ${saldoNegativo ? "text-error" : "text-primary"}`}>{formatoMoeda.format(conta.saldoAtual)}</p>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 border-t border-primary/8 pt-4 text-xs">
+      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-primary/8 pt-3 text-xs sm:mt-5 sm:pt-4">
         <div><span className="block text-foreground-soft">Receitas</span><strong className="mt-1 block text-positive">{formatoMoeda.format(conta.totalReceitas)}</strong></div>
         <div><span className="block text-foreground-soft">Despesas</span><strong className="mt-1 block text-error">{formatoMoeda.format(conta.totalDespesas)}</strong></div>
       </div>

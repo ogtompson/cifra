@@ -61,4 +61,17 @@ textarea {
 .paper-card { border: 1px solid rgba(0, 58, 48, 0.08); background: rgba(254, 254, 254, 0.92); box-shadow: 0 12px 40px rgba(0, 58, 48, 0.055); }
 .gold-surface { background: linear-gradient(135deg, #f8ead4, #ead0a8); }
 
-@media (max-width: 1023px) { .app-frame { background: var(--app-surface); } }
+@media (max-width: 1023px) {
+  .app-frame { background: var(--app-surface); }
+}
+
+@media (max-width: 639px) {
+  .paper-card {
+    border-radius: 1rem;
+    box-shadow: 0 5px 18px rgba(0, 58, 48, 0.04);
+  }
+
+  .balance-panel {
+    border-radius: 1rem;
+  }
+}
