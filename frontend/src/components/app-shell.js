@@ -9,7 +9,7 @@ const navegacao = [
   { nome: "Visão geral", icone: "inicio", href: "/", disponivel: true },
   { nome: "Contas", icone: "contas", href: "/contas", disponivel: true },
   { nome: "Transações", icone: "transacoes", disponivel: false },
-  { nome: "Categorias", icone: "categorias", disponivel: false },
+  { nome: "Categorias", icone: "categorias", href: "/categorias", disponivel: true },
   { nome: "Recorrências", icone: "recorrencias", disponivel: false },
 ];
 
