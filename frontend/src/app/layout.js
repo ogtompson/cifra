@@ -1,4 +1,5 @@
 import "@fontsource-variable/manrope";
+import AppShell from "@/components/app-shell";
 import "./globals.css";
 
 export const metadata = {
@@ -12,7 +13,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }

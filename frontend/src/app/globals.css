@@ -8,6 +8,9 @@
   --secondary: #006463;
   --accent: #704424;
   --white: #fefefe;
+  --app-surface: #f8f6f1;
+  --positive: #087b55;
+  --error: #b44337;
 }
 
 @theme inline {
@@ -18,6 +21,9 @@
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);
   --color-white: var(--white);
+  --color-app-surface: var(--app-surface);
+  --color-positive: var(--positive);
+  --color-error: var(--error);
   --font-sans: "Manrope Variable", Arial, Helvetica, sans-serif;
 }
 
