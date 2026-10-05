@@ -111,7 +111,7 @@ function CartaoConta({ conta, aoEditar, aoExcluir }) {
   const saldoNegativo = Number(conta.saldoAtual) < 0;
 
   return (
-    <article className="group rounded-2xl border border-primary/10 bg-white p-5 shadow-[0_8px_30px_rgba(0,58,48,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_40px_rgba(0,58,48,0.09)]">
+    <article className="paper-card group rounded-[1.4rem] p-5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,58,48,0.09)]">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary/10 text-secondary"><Icone nome="carteira" /></span>
@@ -211,10 +211,10 @@ export default function ContasView() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
+    <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-secondary">Seu patrimônio</p>
+          <p className="text-sm font-bold text-secondary">Seu patrimônio em um só lugar</p>
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Minhas contas</h1>
           <p className="mt-2 text-sm text-foreground-soft">Acompanhe onde está seu dinheiro e mantenha os saldos organizados.</p>
         </div>
@@ -223,15 +223,15 @@ export default function ContasView() {
         </button>
       </div>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2">
-        <div className="relative overflow-hidden rounded-2xl bg-primary p-6 text-white shadow-[0_16px_44px_rgba(0,58,48,0.16)]">
+      <section className="mt-7 grid gap-4 lg:grid-cols-[1.45fr_.55fr]">
+        <div className="balance-panel relative min-h-48 overflow-hidden rounded-[1.75rem] p-6 text-white shadow-[0_18px_50px_rgba(0,58,48,0.16)] sm:p-8">
           <div className="absolute -right-8 -top-12 size-40 rounded-full bg-secondary/40 blur-2xl" aria-hidden="true" />
-          <p className="relative text-xs font-bold uppercase tracking-[0.14em] text-white/60">Saldo consolidado</p>
-          <p className="relative mt-3 text-3xl font-extrabold tracking-tight">{carregando ? "—" : formatoMoeda.format(saldoTotal)}</p>
+          <div className="relative z-10 flex h-full items-center justify-between gap-6"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-white/60">Saldo consolidado</p><p className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{carregando ? "—" : formatoMoeda.format(saldoTotal)}</p><p className="mt-5 text-xs text-white/55">A soma de tudo que você construiu.</p></div><Image src="/logomarca/simbolo-bau-3d.png" alt="" width={500} height={499} className="hidden h-32 w-auto drop-shadow-[0_15px_16px_rgba(0,0,0,.2)] sm:block" /></div>
         </div>
-        <div className="rounded-2xl border border-primary/10 bg-background p-6">
+        <div className="gold-surface flex flex-col justify-center rounded-[1.75rem] border border-accent/10 p-6 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-foreground-soft">Contas cadastradas</p>
           <p className="mt-3 text-3xl font-extrabold tracking-tight text-primary">{carregando ? "—" : contas.length}</p>
+          <p className="mt-2 text-xs text-foreground-soft">Organizadas e sempre à mão.</p>
         </div>
       </section>
 
@@ -248,7 +248,7 @@ export default function ContasView() {
             {[1, 2, 3].map((item) => <div key={item} className="h-56 animate-pulse rounded-2xl bg-primary/6" />)}
           </div>
         ) : contas.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {contas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={excluir} />)}
           </div>
         ) : !erro ? (

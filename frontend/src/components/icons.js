@@ -10,11 +10,12 @@ export function Icone({ nome, className = "size-5" }) {
     excluir: <><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" /></>,
     fechar: <path d="m6 6 12 12M18 6 6 18" />,
     carteira: <><path d="M4 6h14a2 2 0 0 1 2 2v10H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h12" /><path d="M16 11h6v4h-6a2 2 0 0 1 0-4Z" /></>,
+    sino: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
+    calendario: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
+    setaCima: <><path d="m6 15 6-6 6 6" /><path d="M12 9v10" /></>,
+    setaBaixo: <><path d="m6 9 6 6 6-6" /><path d="M12 5v10" /></>,
+    grafico: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
+    setaDireita: <path d="m9 18 6-6-6-6" />,
   };
-
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      {caminhos[nome]}
-    </svg>
-  );
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">{caminhos[nome]}</svg>;
 }
