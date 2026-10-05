@@ -1,5 +1,7 @@
-import { redirect } from "next/navigation";
+import VisaoGeral from "@/components/visao-geral";
+
+export const metadata = { title: "Visão geral | Cifra" };
 
 export default function Home() {
-  redirect("/contas");
+  return <VisaoGeral />;
 }
