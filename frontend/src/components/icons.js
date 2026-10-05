@@ -16,6 +16,8 @@ export function Icone({ nome, className = "size-5" }) {
     setaBaixo: <><path d="m6 9 6 6 6-6" /><path d="M12 5v10" /></>,
     grafico: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
     setaDireita: <path d="m9 18 6-6-6-6" />,
+    busca: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+    filtro: <path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z" />,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">{caminhos[nome]}</svg>;
 }
