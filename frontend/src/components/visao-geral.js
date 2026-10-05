@@ -56,7 +56,7 @@ export default function VisaoGeral() {
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
       <section className="flex items-end justify-between gap-4">
-        <div><p className="text-xs font-bold capitalize text-secondary">{nomeMes.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Dashboard</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Olá, Paulo. Aqui está o resumo da sua vida financeira.</p></div>
+        <div><p className="text-xs font-bold capitalize text-secondary">{nomeMes.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Visão geral</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Olá, Paulo. Aqui está o resumo da sua vida financeira.</p></div>
         <Link href="/transacoes?nova=1" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-[0_8px_20px_rgba(0,58,48,.14)] sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm sm:font-bold"><Icone nome="mais" className="size-4" /><span className="hidden sm:inline">Nova transação</span></Link>
       </section>
 

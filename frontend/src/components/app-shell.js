@@ -7,6 +7,7 @@ import { Icone } from "@/components/icons";
 
 const navegacao = [
   { nome: "Início", icone: "inicio", href: "/" },
+  { nome: "Dashboard", icone: "grafico", href: "/dashboard" },
   { nome: "Contas", icone: "contas", href: "/contas" },
   { nome: "Transações", icone: "transacoes", href: "/transacoes" },
   { nome: "Categorias", icone: "categorias", href: "/categorias" },
