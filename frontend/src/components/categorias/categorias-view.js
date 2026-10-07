@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
+import { botaoPrimario, EsqueletoLista, FeedbackErro } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const configuracao = {
@@ -145,11 +146,9 @@ export default function CategoriasView() {
 
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">Cada real no lugar certo</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-0.035em] text-primary sm:text-4xl">Categorias</h1><p className="mt-2 text-sm text-foreground-soft">Organize suas movimentações e entenda seus hábitos financeiros.</p></div><button type="button" onClick={() => abrirCriacao()} className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,.16)] transition hover:-translate-y-0.5 hover:bg-secondary"><Icone nome="mais" className="size-4" /> Nova categoria</button></div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">Cada real no lugar certo</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-0.035em] text-primary sm:text-4xl">Categorias</h1><p className="mt-2 text-sm text-foreground-soft">Organize suas movimentações e entenda seus hábitos financeiros.</p>{!carregando && <p className="mt-3 text-xs font-semibold text-foreground-soft"><strong className="text-primary">{separadas.DESPESA.length}</strong> de despesa · <strong className="text-primary">{separadas.RECEITA.length}</strong> de receita</p>}</div><button type="button" onClick={() => abrirCriacao()} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova categoria</button></div>
 
-      <section className="gold-surface relative mt-6 overflow-hidden rounded-2xl border border-accent/10 px-4 py-5 sm:mt-7 sm:rounded-[1.6rem] sm:px-8 sm:py-6"><div className="relative z-10 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="text-[.68rem] font-bold uppercase tracking-[.14em] text-accent sm:text-xs">Seu mapa financeiro</p><p className="mt-1.5 max-w-xl text-base font-extrabold text-primary sm:mt-2 sm:text-xl">Categorias transformam uma lista de gastos em decisões mais claras.</p></div><div className="flex gap-2 sm:gap-3"><div className="rounded-xl bg-white/60 px-3 py-2 text-center sm:rounded-2xl sm:px-4 sm:py-3"><strong className="block text-lg text-primary sm:text-xl">{carregando ? "—" : separadas.DESPESA.length}</strong><span className="text-[.62rem] text-foreground-soft sm:text-[.68rem]">despesas</span></div><div className="rounded-xl bg-white/60 px-3 py-2 text-center sm:rounded-2xl sm:px-4 sm:py-3"><strong className="block text-lg text-primary sm:text-xl">{carregando ? "—" : separadas.RECEITA.length}</strong><span className="text-[.62rem] text-foreground-soft sm:text-[.68rem]">receitas</span></div></div></div></section>
-
-      {erro && <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-error/20 bg-error/8 px-5 py-4 text-sm font-semibold text-error" role="alert"><span>{erro}</span><button type="button" onClick={carregarCategorias} className="shrink-0 underline underline-offset-4">Tentar novamente</button></div>}
+      {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregarCategorias} />}
 
       {!carregando && sugestoesDisponiveis.length > 0 && (
         <section className="mt-5 rounded-[1.5rem] border border-primary/8 bg-white/55 p-5 sm:p-6">
@@ -170,7 +169,7 @@ export default function CategoriasView() {
         </section>
       )}
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="h-96 animate-pulse rounded-[1.6rem] bg-primary/6" />) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /></>}</div>
+      <div className="mt-6 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /></>}</div>
 
       {modalAberto && <ModalCategoria categoria={categoriaEditada} tipoInicial={tipoInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
     </main>
