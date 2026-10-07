@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
+import { botaoSecundario, EsqueletoLista, FeedbackErro } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -31,7 +32,13 @@ async function carregarDashboard() {
 
 function CardKpi({ rotulo, valor, detalhe, tom = "neutro" }) {
   const cores = tom === "positivo" ? "text-positive" : tom === "negativo" ? "text-error" : "text-primary";
-  return <article className="rounded-xl border border-primary/7 bg-white px-4 py-3.5"><p className="text-[.62rem] font-bold uppercase tracking-[.11em] text-foreground-soft">{rotulo}</p><p className={`mt-1.5 truncate text-lg font-extrabold sm:text-xl ${cores}`}>{valor}</p><p className="mt-1 truncate text-[.65rem] text-foreground-soft">{detalhe}</p></article>;
+  return <article className="group rounded-xl border border-primary/7 bg-white/85 px-3.5 py-3 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] sm:px-4 sm:py-3.5"><p className="text-[.58rem] font-bold uppercase tracking-[.1em] text-foreground-soft sm:text-[.62rem]">{rotulo}</p><p className={`mt-1.5 truncate text-base font-extrabold sm:text-xl ${cores}`}>{valor}</p><p className="mt-1 truncate text-[.6rem] text-foreground-soft sm:text-[.65rem]">{detalhe}</p></article>;
+}
+
+function variacaoPercentual(atual, anterior) {
+  const base = Number(anterior);
+  if (!base) return null;
+  return ((Number(atual) - base) / Math.abs(base)) * 100;
 }
 
 export default function DashboardView() {
@@ -41,18 +48,21 @@ export default function DashboardView() {
   useEffect(() => { let ativo = true; carregarDashboard().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, []);
 
   const atual = dados?.historico.at(-1)?.resumo;
+  const anterior = dados?.historico.at(-2)?.resumo;
   const maiorFluxo = useMemo(() => Math.max(...(dados?.historico ?? []).flatMap((item) => [Number(item.resumo.totalReceitas), Number(item.resumo.totalDespesas)]), 1), [dados]);
   const maiorSaldo = useMemo(() => Math.max(...(dados?.historico ?? []).map((item) => Math.max(Number(item.resumo.saldoTotal), 0)), 1), [dados]);
   const taxaEconomia = atual && Number(atual.totalReceitas) > 0 ? (Number(atual.resultadoPeriodo) / Number(atual.totalReceitas)) * 100 : 0;
   const principalCategoria = atual?.despesasPorCategoria?.[0];
+  const variacaoReceitas = atual && anterior ? variacaoPercentual(atual.totalReceitas, anterior.totalReceitas) : null;
+  const variacaoDespesas = atual && anterior ? variacaoPercentual(atual.totalDespesas, anterior.totalDespesas) : null;
 
-  if (erro) return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7 lg:px-9"><div className="rounded-xl border border-error/20 bg-error/8 p-4 text-sm font-semibold text-error">{erro} Verifique se o backend está em execução.</div></main>;
+  if (erro) return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7 lg:px-9"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
-      <header className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold capitalize text-secondary">Relatório financeiro · {mesLongo.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Dashboard</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Indicadores para entender o presente e planejar os próximos passos.</p></div><Link href="/transacoes" className="hidden items-center gap-2 rounded-xl border border-primary/10 bg-white px-4 py-2.5 text-xs font-bold text-primary sm:flex">Ver transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
+      <header className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold capitalize text-secondary">Relatório financeiro · {mesLongo.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Dashboard</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Indicadores para entender o presente e planejar os próximos passos.</p></div><Link href="/transacoes" className={`${botaoSecundario} hidden sm:inline-flex`}>Ver transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
 
-      {!dados ? <div className="mt-5 h-[34rem] animate-pulse rounded-2xl bg-primary/6" /> : <>
+      {!dados ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]"><div className="h-64 animate-pulse rounded-2xl bg-primary/6" /><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div></div> : <>
         <section className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
           <article className="paper-card rounded-2xl p-4 sm:p-5">
             <div className="flex items-start justify-between"><div><p className="text-xs font-bold text-foreground-soft">Patrimônio</p><p className="mt-2 text-3xl font-extrabold tracking-[-.04em] text-primary sm:text-4xl">{moeda.format(atual.saldoTotal)}</p></div><span className="rounded-full bg-primary/6 px-3 py-1.5 text-[.65rem] font-bold capitalize text-primary">{mesLongo.format(new Date())}</span></div>
@@ -67,8 +77,8 @@ export default function DashboardView() {
         </section>
 
         <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <CardKpi rotulo="Receitas" valor={moeda.format(atual.totalReceitas)} detalhe="No mês atual" tom="positivo" />
-          <CardKpi rotulo="Despesas" valor={moeda.format(atual.totalDespesas)} detalhe="No mês atual" tom="negativo" />
+          <CardKpi rotulo="Receitas" valor={moeda.format(atual.totalReceitas)} detalhe={variacaoReceitas === null ? "No mês atual" : `${variacaoReceitas >= 0 ? "+" : ""}${variacaoReceitas.toFixed(1)}% ante o mês anterior`} tom="positivo" />
+          <CardKpi rotulo="Despesas" valor={moeda.format(atual.totalDespesas)} detalhe={variacaoDespesas === null ? "No mês atual" : `${variacaoDespesas >= 0 ? "+" : ""}${variacaoDespesas.toFixed(1)}% ante o mês anterior`} tom="negativo" />
           <CardKpi rotulo="Resultado" valor={moeda.format(atual.resultadoPeriodo)} detalhe="Receitas menos despesas" tom={Number(atual.resultadoPeriodo) >= 0 ? "positivo" : "negativo"} />
           <CardKpi rotulo="Taxa de economia" valor={`${taxaEconomia.toFixed(1)}%`} detalhe="Do que entrou no mês" tom={taxaEconomia >= 0 ? "positivo" : "negativo"} />
         </section>
