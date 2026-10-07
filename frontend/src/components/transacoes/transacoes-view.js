@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -44,11 +44,9 @@ function ModalTransacao({ transacao, contas, categorias, aoFechar, aoSalvar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-primary/45 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
-      <section className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-transacao">
-        <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-secondary">{transacao ? "Editar" : "Nova"} transação</p><h2 id="titulo-modal-transacao" className="mt-2 text-2xl font-extrabold tracking-tight text-primary">{transacao ? transacao.descricao : "Registre o que aconteceu"}</h2></div><button type="button" onClick={aoFechar} className="grid size-10 place-items-center rounded-full bg-app-surface text-primary transition hover:bg-primary/10" aria-label="Fechar"><Icone nome="fechar" /></button></div>
+    <ModalPadrao eyebrow={`${transacao ? "Editar" : "Nova"} transação`} titulo={transacao ? transacao.descricao : "Registre o que aconteceu"} aoFechar={aoFechar} tamanho="lg">
         {!configuracaoCompleta ? (
-          <div className="mt-7">
+          <div className="modal-body">
             <p className="text-sm leading-6 text-foreground-soft">Uma transação precisa estar vinculada a uma conta e a uma categoria. Complete os itens abaixo para continuar.</p>
             <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between gap-4 rounded-2xl border border-primary/8 bg-app-surface p-4">
@@ -60,19 +58,18 @@ function ModalTransacao({ transacao, contas, categorias, aoFechar, aoSalvar }) {
                 {categorias.length ? <span className="text-xs font-bold text-positive">Concluído</span> : <Link href="/categorias" className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white">Configurar</Link>}
               </div>
             </div>
-            <button type="button" onClick={aoFechar} className="mt-6 w-full rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Voltar às transações</button>
+            <button type="button" onClick={aoFechar} className={`${botaoSecundario} mt-6 w-full`}>Voltar às transações</button>
           </div>
-        ) : <form className="mt-7 space-y-5" onSubmit={enviar}>
+        ) : <form className="modal-body space-y-5" onSubmit={enviar}>
           <fieldset><legend className="mb-2 text-sm font-bold text-primary">Movimentação</legend><div className="operation-switch">{[{ valor: "DESPESA", rotulo: "Despesa" }, { valor: "RECEITA", rotulo: "Receita" }].map((tipo) => <label key={tipo.valor} className={`operation-option ${formulario.tipo === tipo.valor ? (tipo.valor === "RECEITA" ? "is-positive" : "is-negative") : ""}`}><input type="radio" name="tipo" value={tipo.valor} checked={formulario.tipo === tipo.valor} onChange={alterar} className="sr-only" />{tipo.rotulo}</label>)}</div></fieldset>
           {!categoriasCompativeis.length && <p className="rounded-xl border border-accent/10 bg-accent/8 px-4 py-3 text-sm text-accent">Ainda não há uma categoria de {formulario.tipo === "RECEITA" ? "receita" : "despesa"}. <Link href="/categorias" className="font-bold underline underline-offset-4">Criar categoria</Link></p>}
           <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Descrição</span><input className={campo} name="descricao" value={formulario.descricao} onChange={alterar} maxLength={150} required autoFocus placeholder="Ex.: Supermercado" /></label>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Valor</span><input className={campo} name="valor" value={formulario.valor} onChange={alterar} type="number" min="0.01" step="0.01" required placeholder="0,00" /></label><label><span className="mb-2 block text-sm font-bold text-primary">Data</span><input className={campo} name="data" value={formulario.data} onChange={alterar} type="date" required /></label></div>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Conta</span><select className={campo} name="contaId" value={formulario.contaId} onChange={alterar} required><option value="">Selecione</option>{contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label><span className="mb-2 block text-sm font-bold text-primary">Categoria</span><select className={campo} name="categoriaId" value={formulario.categoriaId} onChange={alterar} required><option value="">Selecione</option>{categoriasCompativeis.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></label></div>
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : transacao ? "Salvar alterações" : "Criar transação"}</button></div>
+          <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : transacao ? "Salvar alterações" : "Criar transação"}</button></div>
         </form>}
-      </section>
-    </div>
+    </ModalPadrao>
   );
 }
 
@@ -97,6 +94,7 @@ export default function TransacoesView() {
   const [transacaoExcluida, setTransacaoExcluida] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
   const [filtros, setFiltros] = useState({ busca: "", conta: "", categoria: "", tipo: "" });
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => { if (ativo) { setDados(resultado); if (new URLSearchParams(window.location.search).get("nova") === "1") setModalAberto(true); } }).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
@@ -105,6 +103,7 @@ export default function TransacoesView() {
   const agrupadas = useMemo(() => Object.entries(filtradas.reduce((grupos, item) => ({ ...grupos, [item.data]: [...(grupos[item.data] ?? []), item] }), {})).sort(([a], [b]) => b.localeCompare(a)), [filtradas]);
   const totais = useMemo(() => filtradas.reduce((total, item) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor) }), { RECEITA: 0, DESPESA: 0 }), [filtradas]);
   const configuracaoCompleta = dados.contas.length > 0 && dados.categorias.length > 0;
+  const totalFiltrosAtivos = [filtros.conta, filtros.categoria, filtros.tipo].filter(Boolean).length;
 
   function abrirCriacao() { setTransacaoEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setTransacaoEditada(item); setModalAberto(true); }
@@ -132,12 +131,17 @@ export default function TransacoesView() {
         <span className="sm:ml-auto"><strong className={totais.RECEITA - totais.DESPESA >= 0 ? "text-positive" : "text-error"}>{moeda.format(totais.RECEITA - totais.DESPESA)}</strong> <span className="text-foreground-soft">resultado</span></span>
       </section>
 
-      <section className="mt-5 rounded-[1.35rem] border border-primary/8 bg-white/55 p-3 sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <label className="relative min-w-0 flex-1"><span className="sr-only">Buscar</span><Icone nome="busca" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-foreground-soft" /><input value={filtros.busca} onChange={(evento) => setFiltros((atual) => ({ ...atual, busca: evento.target.value }))} placeholder="Buscar transação" className={`${campo} pl-10`} /></label>
-          <FiltroSegmentado rotulo="Tipo de transação" valor={filtros.tipo} aoAlterar={(tipo) => setFiltros((atual) => ({ ...atual, tipo }))} opcoes={[{ valor: "", rotulo: "Todas" }, { valor: "RECEITA", rotulo: "Receitas" }, { valor: "DESPESA", rotulo: "Despesas" }]} />
-          <div className="grid gap-2 sm:grid-cols-2 xl:w-[22rem]"><select value={filtros.conta} onChange={(evento) => setFiltros((atual) => ({ ...atual, conta: evento.target.value }))} className={campo} aria-label="Filtrar por conta"><option value="">Todas as contas</option>{dados.contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select><select value={filtros.categoria} onChange={(evento) => setFiltros((atual) => ({ ...atual, categoria: evento.target.value }))} className={campo} aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>{dados.categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></div>
+      <section className="mt-5">
+        <div className="flex gap-2">
+          <label className="relative min-w-0 flex-1"><span className="sr-only">Buscar</span><Icone nome="busca" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-foreground-soft" /><input value={filtros.busca} onChange={(evento) => setFiltros((atual) => ({ ...atual, busca: evento.target.value }))} placeholder="Buscar por descrição" className={`${campo} pl-10`} /></label>
+          <button type="button" onClick={() => setFiltrosAbertos((aberto) => !aberto)} className={`action-secondary shrink-0 ${filtrosAbertos ? "!bg-primary !text-white" : ""}`} aria-expanded={filtrosAbertos}><Icone nome="filtro" className="size-4" /><span className="hidden sm:inline">Filtros</span>{totalFiltrosAtivos > 0 && <span className="grid size-5 place-items-center rounded-full bg-secondary text-[.6rem] text-white">{totalFiltrosAtivos}</span>}</button>
         </div>
+        {filtrosAbertos && <div className="mt-2 grid gap-3 rounded-2xl border border-primary/8 bg-white/75 p-3 shadow-[var(--shadow-soft)] sm:grid-cols-2 lg:grid-cols-[auto_1fr_1fr_auto] lg:items-center">
+          <FiltroSegmentado rotulo="Tipo de transação" valor={filtros.tipo} aoAlterar={(tipo) => setFiltros((atual) => ({ ...atual, tipo }))} opcoes={[{ valor: "", rotulo: "Todas" }, { valor: "RECEITA", rotulo: "Receitas" }, { valor: "DESPESA", rotulo: "Despesas" }]} />
+          <select value={filtros.conta} onChange={(evento) => setFiltros((atual) => ({ ...atual, conta: evento.target.value }))} className={campo} aria-label="Filtrar por conta"><option value="">Todas as contas</option>{dados.contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select>
+          <select value={filtros.categoria} onChange={(evento) => setFiltros((atual) => ({ ...atual, categoria: evento.target.value }))} className={campo} aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>{dados.categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>
+          {totalFiltrosAtivos > 0 && <button type="button" onClick={() => setFiltros((atual) => ({ ...atual, conta: "", categoria: "", tipo: "" }))} className="px-2 py-2 text-xs font-bold text-secondary hover:underline">Limpar</button>}
+        </div>}
       </section>
 
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
