@@ -107,6 +107,65 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
   );
 }
 
+function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar }) {
+  const [confirmado, setConfirmado] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState("");
+  const possuiHistorico = !impacto.podeExcluirDiretamente;
+
+  async function confirmar() {
+    setErro("");
+    setExcluindo(true);
+    try {
+      await aoConfirmar(possuiHistorico);
+    } catch (error) {
+      setErro(error.message);
+      setExcluindo(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-primary/45 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
+      <section className="w-full max-w-lg rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8" role="dialog" aria-modal="true" aria-labelledby="titulo-exclusao-conta">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-error">Ação permanente</p>
+            <h2 id="titulo-exclusao-conta" className="mt-2 text-2xl font-extrabold tracking-tight text-primary">Excluir {impacto.contaNome}?</h2>
+          </div>
+          <button type="button" onClick={aoFechar} className="grid size-10 place-items-center rounded-full bg-app-surface text-primary transition hover:bg-primary/10" aria-label="Fechar">
+            <Icone nome="fechar" />
+          </button>
+        </div>
+
+        {possuiHistorico ? (
+          <>
+            <p className="mt-5 text-sm leading-6 text-foreground-soft">Esta conta ainda possui informações vinculadas. Ao continuar, elas também serão excluídas definitivamente.</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalTransacoes}</strong><span className="mt-1 block text-xs text-foreground-soft">transações</span></div>
+              <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalRecorrencias}</strong><span className="mt-1 block text-xs text-foreground-soft">recorrências</span></div>
+            </div>
+            <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-error/15 bg-error/5 p-4">
+              <input type="checkbox" checked={confirmado} onChange={(evento) => setConfirmado(evento.target.checked)} className="mt-0.5 size-4 accent-[#b44337]" />
+              <span className="text-sm font-semibold leading-5 text-primary">Entendo que a conta e todo o histórico vinculado serão excluídos.</span>
+            </label>
+          </>
+        ) : (
+          <p className="mt-5 rounded-xl bg-app-surface p-4 text-sm leading-6 text-foreground-soft">A conta não possui transações ou recorrências vinculadas e pode ser excluída com segurança.</p>
+        )}
+
+        {erro && <p className="mt-4 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Cancelar</button>
+          <button type="button" onClick={confirmar} disabled={excluindo || (possuiHistorico && !confirmado)} className="rounded-xl bg-error px-5 py-3 text-sm font-bold text-white transition hover:bg-[#96362d] disabled:cursor-not-allowed disabled:opacity-45">
+            {excluindo ? "Excluindo..." : possuiHistorico ? "Excluir conta e histórico" : "Excluir conta"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function CartaoConta({ conta, aoEditar, aoExcluir }) {
   const saldoNegativo = Number(conta.saldoAtual) < 0;
 
@@ -145,6 +204,7 @@ export default function ContasView() {
   const [erro, setErro] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [contaEditada, setContaEditada] = useState(null);
+  const [impactoExclusao, setImpactoExclusao] = useState(null);
 
   const carregarContas = useCallback(async () => {
     setCarregando(true);
@@ -199,14 +259,22 @@ export default function ContasView() {
     await carregarContas();
   }
 
-  async function excluir(conta) {
-    if (!window.confirm(`Excluir a conta “${conta.nome}”?`)) return;
+  async function solicitarExclusao(conta) {
     setErro("");
     try {
-      await apiFetch(`/contas/${conta.id}`, { method: "DELETE" });
-      await carregarContas();
+      setImpactoExclusao(await apiFetch(`/contas/${conta.id}/exclusao`));
     } catch (error) {
       setErro(error.message);
+    }
+  }
+
+  async function confirmarExclusao(excluirDependencias) {
+    try {
+      await apiFetch(`/contas/${impactoExclusao.contaId}?excluirDependencias=${excluirDependencias}`, { method: "DELETE" });
+      setImpactoExclusao(null);
+      await carregarContas();
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -249,7 +317,7 @@ export default function ContasView() {
           </div>
         ) : contas.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-            {contas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={excluir} />)}
+            {contas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={solicitarExclusao} />)}
           </div>
         ) : !erro ? (
           <div className="rounded-[2rem] border border-dashed border-primary/20 bg-background px-6 py-14 text-center">
@@ -262,6 +330,7 @@ export default function ContasView() {
       </section>
 
       {modalAberto && <ModalConta conta={contaEditada} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
+      {impactoExclusao && <ModalExclusaoConta impacto={impactoExclusao} aoFechar={() => setImpactoExclusao(null)} aoConfirmar={confirmarExclusao} />}
     </main>
   );
 }
