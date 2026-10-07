@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
+import { botaoPrimario, EsqueletoLista, FeedbackErro } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -50,23 +50,24 @@ export default function VisaoGeral() {
   const ultimas = useMemo(() => [...(dados?.transacoes ?? [])].sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id).slice(0, 5), [dados]);
   const proximas = useMemo(() => (dados?.recorrencias ?? []).slice(0, 4), [dados]);
   const maiorDespesa = Math.max(...(dados?.resumo.despesasPorCategoria ?? []).map((item) => Number(item.total)), 1);
+  const taxaEconomia = dados?.resumo && Number(dados.resumo.totalReceitas) > 0 ? (Number(dados.resumo.resultadoPeriodo) / Number(dados.resumo.totalReceitas)) * 100 : 0;
 
-  if (erro) return <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-7 lg:px-9"><div className="rounded-xl border border-error/20 bg-error/8 p-4 text-sm font-semibold text-error">{erro} Verifique se o backend está em execução.</div></main>;
+  if (erro) return <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-7 lg:px-9"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
       <section className="flex items-end justify-between gap-4">
-        <div><p className="text-xs font-bold capitalize text-secondary">{nomeMes.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Visão geral</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Olá, Paulo. Aqui está o resumo da sua vida financeira.</p></div>
-        <Link href="/transacoes?nova=1" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-[0_8px_20px_rgba(0,58,48,.14)] sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm sm:font-bold"><Icone nome="mais" className="size-4" /><span className="hidden sm:inline">Nova transação</span></Link>
+        <div><p className="text-xs font-bold capitalize text-secondary">{nomeMes.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Olá, Paulo!</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Seu dinheiro, com mais clareza.</p></div>
+        <Link href="/transacoes?nova=1" className={`${botaoPrimario} size-11 !p-0 sm:size-auto sm:!px-5`}><Icone nome="mais" className="size-4" /><span className="hidden sm:inline">Nova transação</span></Link>
       </section>
 
-      {!dados ? <div className="mt-5 h-52 animate-pulse rounded-2xl bg-primary/7" /> : <>
+      {!dados ? <div className="mt-5 space-y-4"><div className="h-48 animate-pulse rounded-2xl bg-primary/7" /><div className="grid gap-4 xl:grid-cols-2"><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div></div></div> : <>
         <section className="balance-panel relative mt-5 overflow-hidden rounded-2xl px-5 py-5 text-white shadow-[0_16px_40px_rgba(0,58,48,.14)] sm:px-7 sm:py-7">
-          <div className="relative z-10 grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="relative z-10 grid gap-6 md:grid-cols-[1fr_minmax(13rem,.38fr)] md:items-center">
             <div><p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-white/55">Saldo consolidado</p><p className="mt-1.5 text-3xl font-extrabold tracking-[-.045em] sm:text-4xl">{moeda.format(dados.resumo.saldoTotal)}</p>
-              <div className="mt-5 grid max-w-lg grid-cols-3 divide-x divide-white/15"><div className="pr-2 sm:pr-4"><p className="text-[.62rem] text-white/50 sm:text-xs">Entradas</p><strong className="mt-1 block truncate text-xs text-[#82ddb5] sm:text-sm">{moeda.format(dados.resumo.totalReceitas)}</strong></div><div className="px-2 sm:px-4"><p className="text-[.62rem] text-white/50 sm:text-xs">Saídas</p><strong className="mt-1 block truncate text-xs text-[#f0aa94] sm:text-sm">{moeda.format(dados.resumo.totalDespesas)}</strong></div><div className="pl-2 sm:pl-4"><p className="text-[.62rem] text-white/50 sm:text-xs">Resultado</p><strong className="mt-1 block truncate text-xs sm:text-sm">{moeda.format(dados.resumo.resultadoPeriodo)}</strong></div></div>
+              <div className="mt-5 flex max-w-md gap-6"><div><p className="text-[.62rem] text-white/50 sm:text-xs">Recebido no mês</p><strong className="mt-1 block text-xs text-[#82ddb5] sm:text-sm">{moeda.format(dados.resumo.totalReceitas)}</strong></div><div><p className="text-[.62rem] text-white/50 sm:text-xs">Pago no mês</p><strong className="mt-1 block text-xs text-[#f0aa94] sm:text-sm">{moeda.format(dados.resumo.totalDespesas)}</strong></div></div>
             </div>
-            <Image src="/logomarca/simbolo-bau-3d.png" alt="" width={500} height={499} className="hidden h-28 w-auto drop-shadow-[0_15px_15px_rgba(0,0,0,.18)] md:block" />
+            <div className="rounded-2xl border border-white/12 bg-white/[0.075] p-4 backdrop-blur-sm sm:p-5"><p className="text-[.62rem] font-bold uppercase tracking-[.13em] text-white/50">Resultado do mês</p><p className={`mt-2 text-2xl font-extrabold ${Number(dados.resumo.resultadoPeriodo) >= 0 ? "text-[#9ae4c1]" : "text-[#f2ae99]"}`}>{moeda.format(dados.resumo.resultadoPeriodo)}</p><p className="mt-2 text-xs text-white/55">{taxaEconomia >= 0 ? `${taxaEconomia.toFixed(1)}% do que entrou foi preservado.` : "As despesas superaram as receitas neste período."}</p></div>
           </div>
         </section>
 
