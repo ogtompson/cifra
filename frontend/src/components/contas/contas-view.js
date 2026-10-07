@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, EsqueletoLista, FeedbackErro } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, EsqueletoLista, FeedbackErro } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const tiposConta = [
@@ -78,17 +78,17 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
         <form className="mt-7 space-y-5" onSubmit={enviar}>
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-primary">Nome</span>
-            <input name="nome" value={formulario.nome} onChange={alterar} maxLength={100} required autoFocus placeholder="Ex.: Conta principal" className="w-full rounded-xl border border-primary/15 bg-background px-4 py-3.5 text-sm outline-none transition placeholder:text-foreground-soft/60 focus:border-secondary focus:ring-3 focus:ring-secondary/10" />
+            <input name="nome" value={formulario.nome} onChange={alterar} maxLength={100} required autoFocus placeholder="Ex.: Conta principal" className={campo} />
           </label>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-primary">Saldo inicial</span>
-              <input name="saldoInicial" value={formulario.saldoInicial} onChange={alterar} type="number" step="0.01" required className="w-full rounded-xl border border-primary/15 bg-background px-4 py-3.5 text-sm outline-none transition focus:border-secondary focus:ring-3 focus:ring-secondary/10" />
+              <input name="saldoInicial" value={formulario.saldoInicial} onChange={alterar} type="number" step="0.01" required className={campo} />
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-primary">Tipo</span>
-              <select name="tipo" value={formulario.tipo} onChange={alterar} className="w-full rounded-xl border border-primary/15 bg-background px-4 py-3.5 text-sm outline-none transition focus:border-secondary focus:ring-3 focus:ring-secondary/10">
+              <select name="tipo" value={formulario.tipo} onChange={alterar} className={campo}>
                 {tiposConta.map((tipo) => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
               </select>
             </label>
@@ -97,8 +97,8 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
 
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Cancelar</button>
-            <button type="submit" disabled={salvando} className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,0.16)] transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60">
+            <button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button>
+            <button type="submit" disabled={salvando} className={botaoPrimario}>
               {salvando ? "Salvando..." : conta ? "Salvar alterações" : "Criar conta"}
             </button>
           </div>

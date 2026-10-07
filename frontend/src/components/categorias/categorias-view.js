@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, EsqueletoLista, FeedbackErro } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const configuracao = {
@@ -69,10 +69,10 @@ function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
         </div>
 
         <form className="mt-7 space-y-5" onSubmit={enviar}>
-          <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Nome</span><input name="nome" value={formulario.nome} onChange={(evento) => setFormulario((atual) => ({ ...atual, nome: evento.target.value }))} maxLength={100} required autoFocus placeholder="Ex.: Alimentação" className="w-full rounded-xl border border-primary/15 bg-background px-4 py-3.5 text-sm outline-none transition placeholder:text-foreground-soft/60 focus:border-secondary focus:ring-3 focus:ring-secondary/10" /></label>
+          <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Nome</span><input name="nome" value={formulario.nome} onChange={(evento) => setFormulario((atual) => ({ ...atual, nome: evento.target.value }))} maxLength={100} required autoFocus placeholder="Ex.: Alimentação" className={campo} /></label>
           <fieldset><legend className="mb-2 text-sm font-bold text-primary">Tipo</legend><div className="grid grid-cols-2 gap-3">{["DESPESA", "RECEITA"].map((tipo) => <label key={tipo} className={`cursor-pointer rounded-xl border px-4 py-3.5 text-center text-sm font-bold transition ${formulario.tipo === tipo ? "border-primary bg-primary text-white" : "border-primary/12 bg-background text-primary hover:border-primary/30"}`}><input type="radio" name="tipo" value={tipo} checked={formulario.tipo === tipo} onChange={(evento) => setFormulario((atual) => ({ ...atual, tipo: evento.target.value }))} className="sr-only" />{configuracao[tipo].singular[0].toUpperCase() + configuracao[tipo].singular.slice(1)}</label>)}</div></fieldset>
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Cancelar</button><button type="submit" disabled={salvando} className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,.16)] transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60">{salvando ? "Salvando..." : categoria ? "Salvar alterações" : "Criar categoria"}</button></div>
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando} className={botaoPrimario}>{salvando ? "Salvando..." : categoria ? "Salvar alterações" : "Criar categoria"}</button></div>
         </form>
       </section>
     </div>
@@ -109,6 +109,8 @@ export default function CategoriasView() {
   const [categoriaEditada, setCategoriaEditada] = useState(null);
   const [tipoInicial, setTipoInicial] = useState("DESPESA");
   const [adicionandoSugestao, setAdicionandoSugestao] = useState("");
+  const [categoriaExcluida, setCategoriaExcluida] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   const carregarCategorias = useCallback(async () => {
     setCarregando(true); setErro("");
@@ -130,7 +132,7 @@ export default function CategoriasView() {
   function abrirCriacao(tipo = "DESPESA") { setCategoriaEditada(null); setTipoInicial(tipo); setModalAberto(true); }
   function abrirEdicao(categoria) { setCategoriaEditada(categoria); setTipoInicial(categoria.tipo); setModalAberto(true); }
   async function salvar(dados) { await apiFetch(categoriaEditada ? `/categorias/${categoriaEditada.id}` : "/categorias", { method: categoriaEditada ? "PUT" : "POST", body: JSON.stringify(dados) }); setModalAberto(false); setCategoriaEditada(null); await carregarCategorias(); }
-  async function excluir(categoria) { if (!window.confirm(`Excluir a categoria “${categoria.nome}”?`)) return; setErro(""); try { await apiFetch(`/categorias/${categoria.id}`, { method: "DELETE" }); await carregarCategorias(); } catch (error) { setErro(error.message); } }
+  async function excluir() { setErro(""); setExcluindo(true); try { await apiFetch(`/categorias/${categoriaExcluida.id}`, { method: "DELETE" }); setCategoriaExcluida(null); await carregarCategorias(); } catch (error) { setErro(error.message); } finally { setExcluindo(false); } }
   async function adicionarSugestao(sugestao) {
     setErro("");
     setAdicionandoSugestao(`${sugestao.tipo}:${sugestao.nome}`);
@@ -169,9 +171,10 @@ export default function CategoriasView() {
         </section>
       )}
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /></>}</div>
+      <div className="mt-6 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /></>}</div>
 
       {modalAberto && <ModalCategoria categoria={categoriaEditada} tipoInicial={tipoInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
+      {categoriaExcluida && <Confirmacao titulo={`Excluir “${categoriaExcluida.nome}”?`} descricao="A categoria só poderá ser excluída se não estiver vinculada a movimentações ou recorrências." confirmando={excluindo} aoCancelar={() => setCategoriaExcluida(null)} aoConfirmar={excluir} />}
     </main>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, campo, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -82,7 +82,7 @@ function ModalRecorrencia({ recorrencia, contas, categorias, aoFechar, aoSalvar 
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Conta</span><select className={campo} name="contaId" value={formulario.contaId} onChange={alterar} required><option value="">Selecione</option>{contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label><span className="mb-2 block text-sm font-bold text-primary">Categoria</span><select className={campo} name="categoriaId" value={formulario.categoriaId} onChange={alterar} required><option value="">Selecione</option>{categoriasCompativeis.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></label></div>
           {!categoriasCompativeis.length && <p className="rounded-xl bg-accent/8 px-4 py-3 text-sm text-accent">Você ainda não possui uma categoria compatível. <Link href="/categorias" className="font-bold underline">Criar categoria</Link></p>}
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary">Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45">{salvando ? "Salvando..." : recorrencia ? "Salvar alterações" : "Criar recorrência"}</button></div>
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : recorrencia ? "Salvar alterações" : "Criar recorrência"}</button></div>
         </form>
       </section>
     </div>
@@ -132,6 +132,8 @@ export default function RecorrenciasView() {
   const [situacao, setSituacao] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [recorrenciaEditada, setRecorrenciaEditada] = useState(null);
+  const [recorrenciaExcluida, setRecorrenciaExcluida] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
@@ -144,7 +146,7 @@ export default function RecorrenciasView() {
   function abrirEdicao(item) { setRecorrenciaEditada(item); setModalAberto(true); }
   async function salvar(payload) { await apiFetch(recorrenciaEditada ? `/recorrencias/${recorrenciaEditada.id}` : "/recorrencias", { method: recorrenciaEditada ? "PUT" : "POST", body: JSON.stringify(payload) }); setModalAberto(false); setRecorrenciaEditada(null); await carregar(); }
   async function alternarSituacao(item) { setErro(""); try { await apiFetch(`/recorrencias/${item.id}`, { method: "PUT", body: JSON.stringify({ descricao: item.descricao, valor: item.valor, tipo: item.tipo, frequencia: item.frequencia, diaDoMes: item.diaDoMes, dataInicio: item.dataInicio, dataFim: item.dataFim, ativa: !item.ativa, contaId: item.contaId, categoriaId: item.categoriaId }) }); await carregar(); } catch (error) { setErro(error.message); } }
-  async function excluir(item) { if (!window.confirm(`Excluir a recorrência “${item.descricao}”?`)) return; setErro(""); try { await apiFetch(`/recorrencias/${item.id}`, { method: "DELETE" }); await carregar(); } catch (error) { setErro(error.message); } }
+  async function excluir() { setErro(""); setExcluindo(true); try { await apiFetch(`/recorrencias/${recorrenciaExcluida.id}`, { method: "DELETE" }); setRecorrenciaExcluida(null); await carregar(); } catch (error) { setErro(error.message); } finally { setExcluindo(false); } }
 
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -155,10 +157,11 @@ export default function RecorrenciasView() {
       </div>
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
       <div className="mt-6 grid gap-8 2xl:grid-cols-2">
-        <GrupoRecorrencias titulo="Despesas recorrentes" descricao="Compromissos que se repetem" itens={separadas.DESPESA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={excluir} aoCriar={abrirCriacao} />
-        <GrupoRecorrencias titulo="Receitas recorrentes" descricao="Valores previstos com frequência" itens={separadas.RECEITA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={excluir} aoCriar={abrirCriacao} />
+        <GrupoRecorrencias titulo="Despesas recorrentes" descricao="Compromissos que se repetem" itens={separadas.DESPESA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} aoCriar={abrirCriacao} />
+        <GrupoRecorrencias titulo="Receitas recorrentes" descricao="Valores previstos com frequência" itens={separadas.RECEITA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} aoCriar={abrirCriacao} />
       </div>
       {modalAberto && <ModalRecorrencia recorrencia={recorrenciaEditada} contas={dados.contas} categorias={dados.categorias} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
+      {recorrenciaExcluida && <Confirmacao titulo={`Excluir “${recorrenciaExcluida.descricao}”?`} descricao="Os lançamentos já gerados permanecerão no histórico, mas novas ocorrências não serão criadas." confirmando={excluindo} aoCancelar={() => setRecorrenciaExcluida(null)} aoConfirmar={excluir} />}
     </main>
   );
 }

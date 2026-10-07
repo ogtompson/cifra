@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, campo, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -69,7 +69,7 @@ function ModalTransacao({ transacao, contas, categorias, aoFechar, aoSalvar }) {
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Valor</span><input className={campo} name="valor" value={formulario.valor} onChange={alterar} type="number" min="0.01" step="0.01" required placeholder="0,00" /></label><label><span className="mb-2 block text-sm font-bold text-primary">Data</span><input className={campo} name="data" value={formulario.data} onChange={alterar} type="date" required /></label></div>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Conta</span><select className={campo} name="contaId" value={formulario.contaId} onChange={alterar} required><option value="">Selecione</option>{contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label><span className="mb-2 block text-sm font-bold text-primary">Categoria</span><select className={campo} name="categoriaId" value={formulario.categoriaId} onChange={alterar} required><option value="">Selecione</option>{categoriasCompativeis.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></label></div>
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,.16)] transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45">{salvando ? "Salvando..." : transacao ? "Salvar alterações" : "Criar transação"}</button></div>
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : transacao ? "Salvar alterações" : "Criar transação"}</button></div>
         </form>}
       </section>
     </div>
@@ -94,6 +94,8 @@ export default function TransacoesView() {
   const [erro, setErro] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [transacaoEditada, setTransacaoEditada] = useState(null);
+  const [transacaoExcluida, setTransacaoExcluida] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
   const [filtros, setFiltros] = useState({ busca: "", conta: "", categoria: "", tipo: "" });
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
@@ -107,7 +109,7 @@ export default function TransacoesView() {
   function abrirCriacao() { setTransacaoEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setTransacaoEditada(item); setModalAberto(true); }
   async function salvar(payload) { await apiFetch(transacaoEditada ? `/transacoes/${transacaoEditada.id}` : "/transacoes", { method: transacaoEditada ? "PUT" : "POST", body: JSON.stringify(payload) }); setModalAberto(false); setTransacaoEditada(null); await carregar(); }
-  async function excluir(item) { if (!window.confirm(`Excluir a transação “${item.descricao}”?`)) return; setErro(""); try { await apiFetch(`/transacoes/${item.id}`, { method: "DELETE" }); await carregar(); } catch (error) { setErro(error.message); } }
+  async function excluir() { setErro(""); setExcluindo(true); try { await apiFetch(`/transacoes/${transacaoExcluida.id}`, { method: "DELETE" }); setTransacaoExcluida(null); await carregar(); } catch (error) { setErro(error.message); } finally { setExcluindo(false); } }
 
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -140,9 +142,10 @@ export default function TransacoesView() {
 
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
 
-      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <EsqueletoLista linhas={6} /> : agrupadas.length ? agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={excluir} />)}</div>) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="transacoes" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma movimentação encontrada</h2><p className="mx-auto mt-2 max-w-md text-sm text-foreground-soft">Ajuste os filtros ou registre sua primeira receita ou despesa.</p><button type="button" onClick={abrirCriacao} className={`${botaoPrimario} mt-5`}>Nova transação</button></div>}</section>
+      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <EsqueletoLista linhas={6} /> : agrupadas.length ? agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={setTransacaoExcluida} />)}</div>) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="transacoes" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma movimentação encontrada</h2><p className="mx-auto mt-2 max-w-md text-sm text-foreground-soft">Ajuste os filtros ou registre sua primeira receita ou despesa.</p><button type="button" onClick={abrirCriacao} className={`${botaoPrimario} mt-5`}>Nova transação</button></div>}</section>
 
       {modalAberto && <ModalTransacao transacao={transacaoEditada} contas={dados.contas} categorias={dados.categorias} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
+      {transacaoExcluida && <Confirmacao titulo={`Excluir “${transacaoExcluida.descricao}”?`} descricao="Essa movimentação será removida do histórico e dos totais financeiros. Esta ação não pode ser desfeita." confirmando={excluindo} aoCancelar={() => setTransacaoExcluida(null)} aoConfirmar={excluir} />}
     </main>
   );
 }
