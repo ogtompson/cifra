@@ -56,11 +56,11 @@ export default function DashboardView() {
   const variacaoReceitas = atual && anterior ? variacaoPercentual(atual.totalReceitas, anterior.totalReceitas) : null;
   const variacaoDespesas = atual && anterior ? variacaoPercentual(atual.totalDespesas, anterior.totalDespesas) : null;
 
-  if (erro) return <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7 lg:px-9"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
+  if (erro) return <main className="page-shell"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
-      <header className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold capitalize text-secondary">Relatório financeiro · {mesLongo.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Dashboard</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Indicadores para entender o presente e planejar os próximos passos.</p></div><Link href="/transacoes" className={`${botaoSecundario} hidden sm:inline-flex`}>Ver transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
+    <main className="page-shell">
+      <header className="flex items-end justify-between gap-4"><div><p className="page-eyebrow capitalize">Relatório financeiro · {mesLongo.format(new Date())}</p><h1 className="page-title">Dashboard</h1><p className="page-description">Indicadores para entender o presente e planejar os próximos passos.</p></div><Link href="/transacoes" className={`${botaoSecundario} hidden sm:inline-flex`}>Ver transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
 
       {!dados ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]"><div className="h-64 animate-pulse rounded-2xl bg-primary/6" /><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div></div> : <>
         <section className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]">

@@ -32,7 +32,7 @@ function CabecalhoCard({ titulo, descricao, href, link }) {
   return (
     <header className="flex items-start justify-between gap-4 border-b border-primary/7 px-4 py-4 sm:px-5">
       <div><h2 className="text-sm font-extrabold text-primary sm:text-base">{titulo}</h2><p className="mt-0.5 text-[.68rem] text-foreground-soft sm:text-xs">{descricao}</p></div>
-      {href && <Link href={href} className="shrink-0 text-xs font-bold text-secondary">{link}</Link>}
+      {href && <Link href={href} className="shrink-0 text-xs font-bold text-secondary transition hover:translate-x-0.5 hover:underline hover:underline-offset-4">{link}</Link>}
     </header>
   );
 }
@@ -52,12 +52,12 @@ export default function VisaoGeral() {
   const maiorDespesa = Math.max(...(dados?.resumo.despesasPorCategoria ?? []).map((item) => Number(item.total)), 1);
   const taxaEconomia = dados?.resumo && Number(dados.resumo.totalReceitas) > 0 ? (Number(dados.resumo.resultadoPeriodo) / Number(dados.resumo.totalReceitas)) * 100 : 0;
 
-  if (erro) return <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-7 lg:px-9"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
+  if (erro) return <main className="page-shell"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
-    <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
+    <main className="page-shell">
       <section className="flex items-end justify-between gap-4">
-        <div><p className="text-xs font-bold capitalize text-secondary">{nomeMes.format(new Date())}</p><h1 className="mt-1 text-2xl font-extrabold tracking-[-.035em] text-primary sm:text-3xl">Olá, Paulo!</h1><p className="mt-1 text-xs text-foreground-soft sm:text-sm">Seu dinheiro, com mais clareza.</p></div>
+        <div><p className="page-eyebrow capitalize">{nomeMes.format(new Date())}</p><h1 className="page-title">Olá, Paulo!</h1><p className="page-description">Seu dinheiro, com mais clareza.</p></div>
         <Link href="/transacoes?nova=1" className={`${botaoPrimario} size-11 !p-0 sm:size-auto sm:!px-5`}><Icone nome="mais" className="size-4" /><span className="hidden sm:inline">Nova transação</span></Link>
       </section>
 
@@ -74,7 +74,7 @@ export default function VisaoGeral() {
         <section className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
           <article className="paper-card overflow-hidden rounded-2xl">
             <CabecalhoCard titulo="Movimentações recentes" descricao="Seus últimos lançamentos" href="/transacoes" link="Ver todas" />
-            <div>{ultimas.length ? ultimas.map((item) => <div key={item.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 border-b border-primary/6 px-4 py-3 last:border-0 sm:px-5"><span className={`grid size-8 place-items-center rounded-lg ${item.tipo === "RECEITA" ? "bg-positive/10 text-positive" : "bg-error/8 text-error"}`}><Icone nome={item.tipo === "RECEITA" ? "setaCima" : "setaBaixo"} className="size-3.5" /></span><div className="min-w-0"><p className="truncate text-xs font-bold text-primary sm:text-sm">{item.descricao}</p><p className="mt-0.5 truncate text-[.62rem] text-foreground-soft sm:text-xs">{item.categoriaNome} · {item.contaNome}</p></div><div className="text-right"><strong className={`whitespace-nowrap text-xs sm:text-sm ${item.tipo === "RECEITA" ? "text-positive" : "text-error"}`}>{item.tipo === "RECEITA" ? "+" : "−"} {moeda.format(item.valor)}</strong><p className="mt-0.5 text-[.58rem] text-foreground-soft sm:text-[.65rem]">{dataCurta.format(new Date(`${item.data}T12:00:00`))}</p></div></div>) : <p className="px-5 py-10 text-center text-xs text-foreground-soft">Suas movimentações aparecerão aqui.</p>}</div>
+            <div>{ultimas.length ? ultimas.map((item) => <div key={item.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 border-b border-primary/6 px-4 py-3 transition-colors last:border-0 hover:bg-secondary/[0.025] sm:px-5"><span className={`grid size-8 place-items-center rounded-lg ${item.tipo === "RECEITA" ? "bg-positive/10 text-positive" : "bg-error/8 text-error"}`}><Icone nome={item.tipo === "RECEITA" ? "setaCima" : "setaBaixo"} className="size-3.5" /></span><div className="min-w-0"><p className="truncate text-xs font-bold text-primary sm:text-sm">{item.descricao}</p><p className="mt-0.5 truncate text-[.62rem] text-foreground-soft sm:text-xs">{item.categoriaNome} · {item.contaNome}</p></div><div className="text-right"><strong className={`whitespace-nowrap text-xs sm:text-sm ${item.tipo === "RECEITA" ? "text-positive" : "text-error"}`}>{item.tipo === "RECEITA" ? "+" : "−"} {moeda.format(item.valor)}</strong><p className="mt-0.5 text-[.58rem] text-foreground-soft sm:text-[.65rem]">{dataCurta.format(new Date(`${item.data}T12:00:00`))}</p></div></div>) : <p className="px-5 py-10 text-center text-xs text-foreground-soft">Suas movimentações aparecerão aqui.</p>}</div>
           </article>
 
           <article className="paper-card overflow-hidden rounded-2xl">
