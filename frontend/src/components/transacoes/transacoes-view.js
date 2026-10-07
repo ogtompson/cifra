@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
+import { botaoPrimario, campo, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataCompleta = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 const hoje = () => new Date().toLocaleDateString("en-CA");
-const campo = "w-full rounded-xl border border-primary/15 bg-background px-4 py-3.5 text-sm outline-none transition focus:border-secondary focus:ring-3 focus:ring-secondary/10";
 
 async function buscarDados() {
   const [transacoes, contas, categorias] = await Promise.all([apiFetch("/transacoes"), apiFetch("/contas"), apiFetch("/categorias")]);
@@ -111,7 +111,7 @@ export default function TransacoesView() {
 
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">Seu dinheiro em movimento</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-.035em] text-primary sm:text-4xl">Transações</h1><p className="mt-2 text-sm text-foreground-soft">Acompanhe tudo que entrou e saiu das suas contas.</p></div><button type="button" onClick={abrirCriacao} className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,.16)] transition hover:-translate-y-0.5 hover:bg-secondary"><Icone nome="mais" className="size-4" /> Nova transação</button></div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">Seu dinheiro em movimento</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-.035em] text-primary sm:text-4xl">Transações</h1><p className="mt-2 text-sm text-foreground-soft">Acompanhe tudo que entrou e saiu das suas contas.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova transação</button></div>
 
       {!carregando && !configuracaoCompleta && <section className="mt-6 rounded-[1.5rem] border border-accent/15 bg-[#fbf5e9] p-5 sm:mt-7 sm:p-6">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
@@ -123,13 +123,24 @@ export default function TransacoesView() {
         </div>
       </section>}
 
-      <section className="mt-6 grid grid-cols-2 gap-3 sm:mt-7 sm:gap-4"><div className="paper-card rounded-[1.4rem] p-4 sm:p-5"><div className="flex items-center justify-between gap-2"><div><p className="text-[.62rem] font-bold uppercase tracking-[.1em] text-foreground-soft sm:text-xs">Entradas</p><p className="mt-1 text-base font-extrabold text-positive sm:mt-2 sm:text-2xl">{moeda.format(totais.RECEITA)}</p></div><span className="hidden size-11 place-items-center rounded-2xl bg-positive/10 text-positive sm:grid"><Icone nome="setaCima" /></span></div></div><div className="paper-card rounded-[1.4rem] p-4 sm:p-5"><div className="flex items-center justify-between gap-2"><div><p className="text-[.62rem] font-bold uppercase tracking-[.1em] text-foreground-soft sm:text-xs">Saídas</p><p className="mt-1 text-base font-extrabold text-error sm:mt-2 sm:text-2xl">{moeda.format(totais.DESPESA)}</p></div><span className="hidden size-11 place-items-center rounded-2xl bg-error/10 text-error sm:grid"><Icone nome="setaBaixo" /></span></div></div></section>
+      <section className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-primary/7 py-3.5 text-xs sm:mt-7">
+        <span className="text-foreground-soft">No resultado exibido</span>
+        <span><strong className="text-positive">{moeda.format(totais.RECEITA)}</strong> <span className="text-foreground-soft">recebidos</span></span>
+        <span><strong className="text-error">{moeda.format(totais.DESPESA)}</strong> <span className="text-foreground-soft">pagos</span></span>
+        <span className="sm:ml-auto"><strong className={totais.RECEITA - totais.DESPESA >= 0 ? "text-positive" : "text-error"}>{moeda.format(totais.RECEITA - totais.DESPESA)}</strong> <span className="text-foreground-soft">resultado</span></span>
+      </section>
 
-      <section className="paper-card mt-5 rounded-[1.5rem] p-4 sm:p-5"><div className="grid gap-3 md:grid-cols-[minmax(14rem,1fr)_repeat(3,minmax(9rem,.45fr))]"><label className="relative"><span className="sr-only">Buscar</span><Icone nome="busca" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-foreground-soft" /><input value={filtros.busca} onChange={(evento) => setFiltros((atual) => ({ ...atual, busca: evento.target.value }))} placeholder="Buscar por descrição..." className={`${campo} pl-10`} /></label><select value={filtros.conta} onChange={(evento) => setFiltros((atual) => ({ ...atual, conta: evento.target.value }))} className={campo} aria-label="Filtrar por conta"><option value="">Todas as contas</option>{dados.contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select><select value={filtros.categoria} onChange={(evento) => setFiltros((atual) => ({ ...atual, categoria: evento.target.value }))} className={campo} aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>{dados.categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select><select value={filtros.tipo} onChange={(evento) => setFiltros((atual) => ({ ...atual, tipo: evento.target.value }))} className={campo} aria-label="Filtrar por tipo"><option value="">Todos os tipos</option><option value="RECEITA">Receitas</option><option value="DESPESA">Despesas</option></select></div></section>
+      <section className="mt-5 rounded-[1.35rem] border border-primary/8 bg-white/55 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+          <label className="relative min-w-0 flex-1"><span className="sr-only">Buscar</span><Icone nome="busca" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-foreground-soft" /><input value={filtros.busca} onChange={(evento) => setFiltros((atual) => ({ ...atual, busca: evento.target.value }))} placeholder="Buscar transação" className={`${campo} pl-10`} /></label>
+          <FiltroSegmentado rotulo="Tipo de transação" valor={filtros.tipo} aoAlterar={(tipo) => setFiltros((atual) => ({ ...atual, tipo }))} opcoes={[{ valor: "", rotulo: "Todas" }, { valor: "RECEITA", rotulo: "Receitas" }, { valor: "DESPESA", rotulo: "Despesas" }]} />
+          <div className="grid gap-2 sm:grid-cols-2 xl:w-[22rem]"><select value={filtros.conta} onChange={(evento) => setFiltros((atual) => ({ ...atual, conta: evento.target.value }))} className={campo} aria-label="Filtrar por conta"><option value="">Todas as contas</option>{dados.contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select><select value={filtros.categoria} onChange={(evento) => setFiltros((atual) => ({ ...atual, categoria: evento.target.value }))} className={campo} aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>{dados.categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></div>
+        </div>
+      </section>
 
-      {erro && <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-error/20 bg-error/8 px-5 py-4 text-sm font-semibold text-error" role="alert"><span>{erro}</span><button type="button" onClick={carregar} className="shrink-0 underline underline-offset-4">Tentar novamente</button></div>}
+      {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
 
-      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <div className="h-80 animate-pulse bg-primary/6" /> : agrupadas.length ? agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={excluir} />)}</div>) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="transacoes" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma movimentação encontrada</h2><p className="mx-auto mt-2 max-w-md text-sm text-foreground-soft">Ajuste os filtros ou registre sua primeira receita ou despesa.</p><button type="button" onClick={abrirCriacao} className="mt-5 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white">Nova transação</button></div>}</section>
+      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <EsqueletoLista linhas={6} /> : agrupadas.length ? agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={excluir} />)}</div>) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="transacoes" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma movimentação encontrada</h2><p className="mx-auto mt-2 max-w-md text-sm text-foreground-soft">Ajuste os filtros ou registre sua primeira receita ou despesa.</p><button type="button" onClick={abrirCriacao} className={`${botaoPrimario} mt-5`}>Nova transação</button></div>}</section>
 
       {modalAberto && <ModalTransacao transacao={transacaoEditada} contas={dados.contas} categorias={dados.categorias} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
     </main>
