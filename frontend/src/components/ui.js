@@ -37,3 +37,19 @@ export function FiltroSegmentado({ opcoes, valor, aoAlterar, rotulo }) {
     </div>
   );
 }
+
+export function Confirmacao({ titulo, descricao, rotuloConfirmar = "Excluir", confirmando = false, aoCancelar, aoConfirmar }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-primary/35 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
+      <section className="modal-panel w-full max-w-md rounded-t-[1.5rem] bg-white p-6 shadow-2xl sm:rounded-[1.5rem]" role="alertdialog" aria-modal="true" aria-labelledby="titulo-confirmacao">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-error">Confirmação</p>
+        <h2 id="titulo-confirmacao" className="mt-2 text-xl font-extrabold text-primary">{titulo}</h2>
+        <p className="mt-3 text-sm leading-6 text-foreground-soft">{descricao}</p>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={aoCancelar} className={botaoSecundario}>Cancelar</button>
+          <button type="button" onClick={aoConfirmar} disabled={confirmando} className="action-danger">{confirmando ? "Excluindo..." : rotuloConfirmar}</button>
+        </div>
+      </section>
+    </div>
+  );
+}

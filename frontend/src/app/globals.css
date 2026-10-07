@@ -75,11 +75,12 @@ textarea:focus-visible {
   color: var(--white);
 }
 
-.app-frame { background: radial-gradient(circle at 88% 6%, rgba(205, 171, 111, 0.13), transparent 22rem), var(--app-surface); }
+.app-frame { background: radial-gradient(circle at 88% 4%, rgba(205, 171, 111, 0.16), transparent 24rem), radial-gradient(circle at 18% 90%, rgba(0, 100, 99, 0.045), transparent 28rem), var(--app-surface); }
 .sidebar { background: #003a30; box-shadow: 10px 0 35px rgba(0, 58, 48, 0.05); }
 .balance-panel { background: radial-gradient(circle at 80% 10%, rgba(0, 126, 114, 0.45), transparent 18rem), linear-gradient(120deg, #00483b, #002f27 65%); }
-.balance-panel::before { position: absolute; inset: 0; opacity: 0.22; background-image: repeating-radial-gradient(ellipse at 90% 90%, transparent 0 18px, rgba(255,255,255,.13) 19px 20px); content: ""; }
-.paper-card { border: 1px solid rgba(0, 58, 48, 0.08); background: rgba(254, 254, 254, 0.92); box-shadow: var(--shadow-soft); }
+.balance-panel::before { position: absolute; inset: 0; opacity: 0.42; background-image: repeating-radial-gradient(ellipse at 90% 90%, transparent 0 18px, rgba(255,255,255,.16) 19px 20px); content: ""; }
+.paper-card { border: 1px solid rgba(0, 58, 48, 0.08); background: rgba(254, 254, 254, 0.9); box-shadow: var(--shadow-soft); transition: border-color var(--motion-base), box-shadow var(--motion-base); }
+.paper-card:hover { border-color: rgba(0, 100, 99, 0.13); box-shadow: var(--shadow-raised); }
 .gold-surface { background: linear-gradient(135deg, #f8ead4, #ead0a8); }
 
 .control-field {
@@ -99,7 +100,8 @@ textarea:focus-visible {
 .control-field:focus { border-color: rgba(0, 100, 99, 0.6); background: var(--white); box-shadow: 0 0 0 4px rgba(0, 100, 99, 0.08); }
 
 .action-primary,
-.action-secondary {
+.action-secondary,
+.action-danger {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
@@ -116,8 +118,11 @@ textarea:focus-visible {
 .action-primary:hover { transform: translateY(-1px); background: var(--secondary); box-shadow: 0 12px 28px rgba(0, 58, 48, 0.16); }
 .action-secondary { border: 1px solid rgba(0, 58, 48, 0.13); color: var(--primary); }
 .action-secondary:hover { background: rgba(0, 58, 48, 0.045); }
+.action-danger { background: var(--error); color: var(--white); }
+.action-danger:hover { transform: translateY(-1px); background: #96362d; }
 .action-primary:disabled,
-.action-secondary:disabled { cursor: not-allowed; opacity: 0.45; transform: none; }
+.action-secondary:disabled,
+.action-danger:disabled { cursor: not-allowed; opacity: 0.45; transform: none; }
 
 .icon-action { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.65rem; color: var(--foreground-soft); transition: color var(--motion-fast), background var(--motion-fast); }
 .icon-action:hover { background: rgba(0, 100, 99, 0.08); color: var(--secondary); }
@@ -131,10 +136,17 @@ textarea:focus-visible {
 .feedback-error button { flex-shrink: 0; text-decoration: underline; text-underline-offset: 0.22rem; }
 
 .page-transition { animation: page-enter var(--motion-base) ease-out both; }
+.modal-panel,
+[role="dialog"] { animation: modal-enter var(--motion-base) cubic-bezier(.2,.75,.3,1) both; }
 
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
