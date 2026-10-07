@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
+import { botaoPrimario, campo, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 const frequencias = { SEMANAL: "Semanal", MENSAL: "Mensal", ANUAL: "Anual" };
-const campo = "w-full rounded-xl border border-primary/15 bg-background px-4 py-3.5 text-sm outline-none transition focus:border-secondary focus:ring-3 focus:ring-secondary/10";
 
 async function buscarDados() {
   const [recorrencias, contas, categorias] = await Promise.all([apiFetch("/recorrencias"), apiFetch("/contas"), apiFetch("/categorias")]);
@@ -98,8 +98,30 @@ function LinhaRecorrencia({ item, aoEditar, aoAlternar, aoExcluir }) {
       <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft lg:hidden">Valor</p><strong className={receita ? "text-positive" : "text-error"}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong></div>
       <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft lg:hidden">Frequência</p><span className="text-sm font-semibold text-primary">{frequencias[item.frequencia]}</span></div>
       <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft">Próxima ocorrência</p><span className="mt-1 block text-sm font-bold text-primary">{proxima ? dataCurta.format(proxima) : item.ativa ? "Ciclo encerrado" : "Pausada"}</span></div>
-      <div className="flex items-center gap-1"><button type="button" onClick={() => aoAlternar(item)} className={`rounded-full px-3 py-1.5 text-xs font-extrabold transition ${item.ativa ? "bg-positive/10 text-positive hover:bg-positive/20" : "bg-primary/7 text-foreground-soft hover:bg-primary/12"}`} aria-label={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`}>{item.ativa ? "Ativa" : "Pausada"}</button><button type="button" onClick={() => aoEditar(item)} className="grid size-8 place-items-center rounded-lg text-foreground-soft hover:bg-secondary/10 hover:text-secondary" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="grid size-8 place-items-center rounded-lg text-foreground-soft hover:bg-error/10 hover:text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button></div>
+      <div className="flex items-center gap-1">
+        <button type="button" role="switch" aria-checked={item.ativa} onClick={() => aoAlternar(item)} className="mr-1 flex items-center gap-2 rounded-full px-1.5 py-1 text-[.68rem] font-extrabold text-foreground-soft transition hover:bg-primary/5" aria-label={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`}>
+          <span className={`relative h-5 w-9 rounded-full transition-colors ${item.ativa ? "bg-positive" : "bg-primary/18"}`}><span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${item.ativa ? "translate-x-[1.1rem]" : "translate-x-0.5"}`} /></span>
+          {item.ativa ? "Ativa" : "Pausada"}
+        </button>
+        <button type="button" onClick={() => aoEditar(item)} className="icon-action" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button>
+      </div>
     </article>
+  );
+}
+
+function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoAlternar, aoExcluir, aoCriar }) {
+  return (
+    <section>
+      <header className="mb-3 flex items-end justify-between gap-4 px-1">
+        <div><h2 className="text-base font-extrabold text-primary">{titulo}</h2><p className="mt-0.5 text-xs text-foreground-soft">{descricao}</p></div>
+        <span className="rounded-full bg-primary/6 px-2.5 py-1 text-[.68rem] font-extrabold text-primary">{itens.length}</span>
+      </header>
+      <div className="paper-card overflow-hidden rounded-[1.35rem]">
+        {carregando ? <EsqueletoLista linhas={3} /> : itens.length ? itens.map((item) => <LinhaRecorrencia key={item.id} item={item} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />) : (
+          <div className="px-6 py-10 text-center"><p className="text-sm font-bold text-primary">Nenhum item aqui</p><p className="mt-1 text-xs text-foreground-soft">Crie uma recorrência para começar.</p><button type="button" onClick={aoCriar} className="mt-4 text-xs font-extrabold text-secondary hover:underline">Adicionar recorrência</button></div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -107,14 +129,15 @@ export default function RecorrenciasView() {
   const [dados, setDados] = useState({ recorrencias: [], contas: [], categorias: [] });
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [filtros, setFiltros] = useState({ situacao: "", tipo: "" });
+  const [situacao, setSituacao] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
   const [recorrenciaEditada, setRecorrenciaEditada] = useState(null);
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
 
-  const filtradas = useMemo(() => dados.recorrencias.filter((item) => (!filtros.situacao || item.ativa === (filtros.situacao === "ATIVA")) && (!filtros.tipo || item.tipo === filtros.tipo)), [dados.recorrencias, filtros]);
+  const filtradas = useMemo(() => dados.recorrencias.filter((item) => !situacao || item.ativa === (situacao === "ATIVA")), [dados.recorrencias, situacao]);
+  const separadas = useMemo(() => ({ DESPESA: filtradas.filter((item) => item.tipo === "DESPESA"), RECEITA: filtradas.filter((item) => item.tipo === "RECEITA") }), [filtradas]);
   const totais = useMemo(() => ({ todas: dados.recorrencias.length, ativas: dados.recorrencias.filter((item) => item.ativa).length, pausadas: dados.recorrencias.filter((item) => !item.ativa).length }), [dados.recorrencias]);
 
   function abrirCriacao() { setRecorrenciaEditada(null); setModalAberto(true); }
@@ -125,11 +148,16 @@ export default function RecorrenciasView() {
 
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">O futuro também entra no planejamento</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-.035em] text-primary sm:text-4xl">Recorrências</h1><p className="mt-2 text-sm text-foreground-soft">Acompanhe os compromissos e receitas que se repetem.</p></div><button type="button" onClick={abrirCriacao} className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,.16)]"><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
-      <section className="gold-surface mt-6 grid gap-4 rounded-2xl border border-accent/10 px-4 py-5 sm:mt-7 sm:grid-cols-[1fr_auto] sm:items-center sm:rounded-[1.6rem] sm:px-8 sm:py-6"><div><p className="text-[.68rem] font-bold uppercase tracking-[.14em] text-accent sm:text-xs">Rotina automatizada</p><p className="mt-1.5 max-w-xl text-base font-extrabold text-primary sm:mt-2 sm:text-xl">O Cifra cuida dos lançamentos repetidos para você não perder nenhum compromisso.</p></div><div className="flex gap-2"><div className="rounded-xl bg-white/65 px-3 py-2 text-center sm:rounded-2xl sm:px-4 sm:py-3"><strong className="block text-lg text-primary sm:text-xl">{carregando ? "—" : totais.ativas}</strong><span className="text-[.62rem] text-foreground-soft sm:text-[.68rem]">ativas</span></div><div className="rounded-xl bg-white/65 px-3 py-2 text-center sm:rounded-2xl sm:px-4 sm:py-3"><strong className="block text-lg text-primary sm:text-xl">{carregando ? "—" : totais.pausadas}</strong><span className="text-[.62rem] text-foreground-soft sm:text-[.68rem]">pausadas</span></div></div></section>
-      <section className="paper-card mt-5 rounded-[1.5rem] p-4 sm:p-5"><div className="grid gap-3 sm:grid-cols-2"><select className={campo} value={filtros.situacao} onChange={(evento) => setFiltros((atual) => ({ ...atual, situacao: evento.target.value }))} aria-label="Filtrar por situação"><option value="">Todas ({totais.todas})</option><option value="ATIVA">Ativas ({totais.ativas})</option><option value="PAUSADA">Pausadas ({totais.pausadas})</option></select><select className={campo} value={filtros.tipo} onChange={(evento) => setFiltros((atual) => ({ ...atual, tipo: evento.target.value }))} aria-label="Filtrar por tipo"><option value="">Receitas e despesas</option><option value="RECEITA">Receitas</option><option value="DESPESA">Despesas</option></select></div></section>
-      {erro && <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-error/20 bg-error/8 px-5 py-4 text-sm font-semibold text-error"><span>{erro}</span><button type="button" onClick={carregar} className="underline">Tentar novamente</button></div>}
-      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <div className="h-80 animate-pulse bg-primary/6" /> : filtradas.length ? filtradas.map((item) => <LinhaRecorrencia key={item.id} item={item} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={excluir} />) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="recorrencias" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma recorrência encontrada</h2><p className="mt-2 text-sm text-foreground-soft">Os seus compromissos frequentes aparecerão aqui.</p><button type="button" onClick={abrirCriacao} className="mt-5 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white">Nova recorrência</button></div>}</section>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">O futuro também entra no planejamento</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-.035em] text-primary sm:text-4xl">Recorrências</h1><p className="mt-2 text-sm text-foreground-soft">Acompanhe os compromissos e receitas que se repetem.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3 sm:mt-7">
+        <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
+        <FiltroSegmentado rotulo="Situação das recorrências" valor={situacao} aoAlterar={setSituacao} opcoes={[{ valor: "", rotulo: `Todas (${totais.todas})` }, { valor: "ATIVA", rotulo: `Ativas (${totais.ativas})` }, { valor: "PAUSADA", rotulo: `Pausadas (${totais.pausadas})` }]} />
+      </div>
+      {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
+      <div className="mt-6 grid gap-8 2xl:grid-cols-2">
+        <GrupoRecorrencias titulo="Despesas recorrentes" descricao="Compromissos que se repetem" itens={separadas.DESPESA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={excluir} aoCriar={abrirCriacao} />
+        <GrupoRecorrencias titulo="Receitas recorrentes" descricao="Valores previstos com frequência" itens={separadas.RECEITA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={excluir} aoCriar={abrirCriacao} />
+      </div>
       {modalAberto && <ModalRecorrencia recorrencia={recorrenciaEditada} contas={dados.contas} categorias={dados.categorias} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
     </main>
   );
