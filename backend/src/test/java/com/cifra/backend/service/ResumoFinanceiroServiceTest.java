@@ -52,11 +52,11 @@ class ResumoFinanceiroServiceTest {
         when(transacaoRepository.somarValorPorTipoEPeriodo(
                 TipoOperacao.DESPESA, inicio, fim
         )).thenReturn(new BigDecimal("1200.00"));
-        when(transacaoRepository.somarValorPorTipoAte(TipoOperacao.RECEITA, fim))
+        when(transacaoRepository.somarValorPorTipoAteEmContasAtivas(TipoOperacao.RECEITA, fim))
                 .thenReturn(new BigDecimal("5000.00"));
-        when(transacaoRepository.somarValorPorTipoAte(TipoOperacao.DESPESA, fim))
+        when(transacaoRepository.somarValorPorTipoAteEmContasAtivas(TipoOperacao.DESPESA, fim))
                 .thenReturn(new BigDecimal("1800.00"));
-        when(contaRepository.somarSaldosIniciais()).thenReturn(new BigDecimal("1000.00"));
+        when(contaRepository.somarSaldosIniciaisAtivas()).thenReturn(new BigDecimal("1000.00"));
         when(totalAlimentacao.getCategoriaId()).thenReturn(2L);
         when(totalAlimentacao.getCategoriaNome()).thenReturn("Alimentação");
         when(totalAlimentacao.getTotal()).thenReturn(new BigDecimal("700.00"));

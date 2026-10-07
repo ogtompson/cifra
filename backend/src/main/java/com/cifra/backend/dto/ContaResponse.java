@@ -8,6 +8,7 @@ public record ContaResponse(
         Long id,
         String nome,
         BigDecimal saldoInicial,
-        TipoConta tipo
+        TipoConta tipo,
+        boolean arquivada
 ) {
 }

@@ -3,6 +3,7 @@ package com.cifra.backend.service;
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
 import com.cifra.backend.dto.ExclusaoContaResponse;
+import com.cifra.backend.dto.ArquivamentoContaRequest;
 import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
@@ -36,8 +37,12 @@ public class ContaService {
     }
 
     @Transactional(readOnly = true)
-    public List<ContaResponse> listar() {
-        return contaRepository.findAll(Sort.by(Sort.Direction.ASC, "nome"))
+    public List<ContaResponse> listar(boolean incluirArquivadas) {
+        Sort ordenacao = Sort.by(Sort.Direction.ASC, "nome");
+        List<Conta> contas = incluirArquivadas
+                ? contaRepository.findAll(ordenacao)
+                : contaRepository.findByArquivadaFalseOrArquivadaIsNull(ordenacao);
+        return contas
                 .stream()
                 .map(this::paraResponse)
                 .toList();
@@ -78,6 +83,13 @@ public class ContaService {
     public ContaResponse atualizar(Long id, ContaRequest request) {
         Conta conta = buscarEntidade(id);
         atualizarDados(conta, request);
+        return paraResponse(contaRepository.save(conta));
+    }
+
+    @Transactional
+    public ContaResponse alterarArquivamento(Long id, ArquivamentoContaRequest request) {
+        Conta conta = buscarEntidade(id);
+        conta.setArquivada(request.arquivada());
         return paraResponse(contaRepository.save(conta));
     }
 
@@ -135,7 +147,8 @@ public class ContaService {
                 conta.getId(),
                 conta.getNome(),
                 conta.getSaldoInicial(),
-                conta.getTipo()
+                conta.getTipo(),
+                Boolean.TRUE.equals(conta.getArquivada())
         );
     }
 

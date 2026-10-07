@@ -4,12 +4,14 @@ import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
 import com.cifra.backend.dto.ExclusaoContaResponse;
 import com.cifra.backend.dto.SaldoContaResponse;
+import com.cifra.backend.dto.ArquivamentoContaRequest;
 import com.cifra.backend.service.ContaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,8 +34,10 @@ public class ContaController {
     }
 
     @GetMapping
-    public List<ContaResponse> listar() {
-        return contaService.listar();
+    public List<ContaResponse> listar(
+            @RequestParam(defaultValue = "false") boolean incluirArquivadas
+    ) {
+        return contaService.listar(incluirArquivadas);
     }
 
     @GetMapping("/{id}")
@@ -69,6 +73,14 @@ public class ContaController {
             @Valid @RequestBody ContaRequest request
     ) {
         return contaService.atualizar(id, request);
+    }
+
+    @PatchMapping("/{id}/arquivamento")
+    public ContaResponse alterarArquivamento(
+            @PathVariable Long id,
+            @Valid @RequestBody ArquivamentoContaRequest request
+    ) {
+        return contaService.alterarArquivamento(id, request);
     }
 
     @DeleteMapping("/{id}")

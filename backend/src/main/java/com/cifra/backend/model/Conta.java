@@ -30,4 +30,15 @@ public class Conta {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoConta tipo;
+
+    @Column
+    private Boolean arquivada = false;
+
+    public Conta(Long id, String nome, BigDecimal saldoInicial, TipoConta tipo) {
+        this.id = id;
+        this.nome = nome;
+        this.saldoInicial = saldoInicial;
+        this.tipo = tipo;
+        this.arquivada = false;
+    }
 }

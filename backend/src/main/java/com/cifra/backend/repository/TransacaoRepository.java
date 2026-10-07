@@ -56,6 +56,18 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
     );
 
     @Query("""
+            select coalesce(sum(transacao.valor), 0)
+            from Transacao transacao
+            where transacao.tipo = :tipo
+              and transacao.data <= :dataFim
+              and (transacao.conta.arquivada = false or transacao.conta.arquivada is null)
+            """)
+    BigDecimal somarValorPorTipoAteEmContasAtivas(
+            @Param("tipo") TipoOperacao tipo,
+            @Param("dataFim") LocalDate dataFim
+    );
+
+    @Query("""
             select transacao.categoria.id as categoriaId,
                    transacao.categoria.nome as categoriaNome,
                    sum(transacao.valor) as total

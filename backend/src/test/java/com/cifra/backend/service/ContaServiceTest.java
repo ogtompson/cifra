@@ -4,6 +4,7 @@ import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
 import com.cifra.backend.dto.ExclusaoContaResponse;
 import com.cifra.backend.dto.SaldoContaResponse;
+import com.cifra.backend.dto.ArquivamentoContaRequest;
 import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Conta;
@@ -59,14 +60,14 @@ class ContaServiceTest {
     void deveListarContasOrdenadasPorNome() {
         Conta carteira = conta(1L, "Carteira", "50.00", TipoConta.DINHEIRO);
         Conta corrente = conta(2L, "Conta corrente", "1000.00", TipoConta.CORRENTE);
-        when(contaRepository.findAll(any(Sort.class)))
+        when(contaRepository.findByArquivadaFalseOrArquivadaIsNull(any(Sort.class)))
                 .thenReturn(List.of(carteira, corrente));
 
-        List<ContaResponse> resultado = contaService.listar();
+        List<ContaResponse> resultado = contaService.listar(false);
 
         assertThat(resultado).containsExactly(
-                new ContaResponse(1L, "Carteira", new BigDecimal("50.00"), TipoConta.DINHEIRO),
-                new ContaResponse(2L, "Conta corrente", new BigDecimal("1000.00"), TipoConta.CORRENTE)
+                new ContaResponse(1L, "Carteira", new BigDecimal("50.00"), TipoConta.DINHEIRO, false),
+                new ContaResponse(2L, "Conta corrente", new BigDecimal("1000.00"), TipoConta.CORRENTE, false)
         );
     }
 
@@ -90,7 +91,8 @@ class ContaServiceTest {
                         1L,
                         "Conta corrente",
                         new BigDecimal("1500.25"),
-                        TipoConta.CORRENTE
+                        TipoConta.CORRENTE,
+                        false
                 )
         );
     }
@@ -122,6 +124,23 @@ class ContaServiceTest {
 
         assertThat(resultado.nome()).isEqualTo("Reserva");
         assertThat(resultado.saldoInicial()).isEqualByComparingTo("250.00");
+    }
+
+    @Test
+    void deveArquivarERestaurarConta() {
+        Conta conta = conta(1L, "Nubank", "120.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.save(conta)).thenReturn(conta);
+
+        ContaResponse arquivada = contaService.alterarArquivamento(
+                1L, new ArquivamentoContaRequest(true)
+        );
+        ContaResponse restaurada = contaService.alterarArquivamento(
+                1L, new ArquivamentoContaRequest(false)
+        );
+
+        assertThat(arquivada.arquivada()).isTrue();
+        assertThat(restaurada.arquivada()).isFalse();
     }
 
     @Test

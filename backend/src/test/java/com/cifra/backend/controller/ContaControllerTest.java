@@ -20,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,7 +47,8 @@ class ContaControllerTest {
                         1L,
                         "Conta corrente",
                         new BigDecimal("1500.25"),
-                        TipoConta.CORRENTE
+                        TipoConta.CORRENTE,
+                        false
                 ));
 
         mockMvc.perform(post("/api/contas")
@@ -136,5 +138,19 @@ class ContaControllerTest {
                 .andExpect(status().isNoContent());
 
         org.mockito.Mockito.verify(contaService).excluir(1L, true);
+    }
+
+    @Test
+    void deveArquivarConta() throws Exception {
+        when(contaService.alterarArquivamento(any(), any()))
+                .thenReturn(new ContaResponse(
+                        1L, "Nubank", new BigDecimal("120.00"), TipoConta.CORRENTE, true
+                ));
+
+        mockMvc.perform(patch("/api/contas/1/arquivamento")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"arquivada\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.arquivada").value(true));
     }
 }

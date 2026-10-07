@@ -37,13 +37,13 @@ public class ResumoFinanceiroService {
         BigDecimal totalDespesas = valorOuZero(transacaoRepository.somarValorPorTipoEPeriodo(
                 TipoOperacao.DESPESA, dataInicio, dataFim
         ));
-        BigDecimal receitasAteFim = valorOuZero(transacaoRepository.somarValorPorTipoAte(
+        BigDecimal receitasAteFim = valorOuZero(transacaoRepository.somarValorPorTipoAteEmContasAtivas(
                 TipoOperacao.RECEITA, dataFim
         ));
-        BigDecimal despesasAteFim = valorOuZero(transacaoRepository.somarValorPorTipoAte(
+        BigDecimal despesasAteFim = valorOuZero(transacaoRepository.somarValorPorTipoAteEmContasAtivas(
                 TipoOperacao.DESPESA, dataFim
         ));
-        BigDecimal saldoTotal = valorOuZero(contaRepository.somarSaldosIniciais())
+        BigDecimal saldoTotal = valorOuZero(contaRepository.somarSaldosIniciaisAtivas())
                 .add(receitasAteFim)
                 .subtract(despesasAteFim);
         List<DespesaPorCategoriaResponse> despesasPorCategoria = transacaoRepository
