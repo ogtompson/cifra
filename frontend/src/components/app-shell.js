@@ -25,10 +25,10 @@ function ItemNavegacao({ item, ativo, mobile = false }) {
   }
 
   return (
-    <Link href={item.href} className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${ativo ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"}`}>
-      {ativo && <span className="absolute -left-5 h-5 w-0.5 rounded-r-full bg-[#dfb76e]" />}
-      <Icone nome={item.icone} className="size-[1.1rem]" />
-      <span>{item.nome}</span>
+    <Link href={item.href} title={item.nome} className={`relative flex h-11 items-center gap-3 overflow-hidden rounded-xl px-[0.95rem] text-sm font-semibold transition-colors duration-200 ${ativo ? "bg-white/11 text-white" : "text-white/55 hover:bg-white/6 hover:text-white"}`}>
+      {ativo && <span className="absolute -left-3 h-5 w-0.5 rounded-r-full bg-[#dfb76e] group-hover/sidebar:-left-4" />}
+      <Icone nome={item.icone} className="size-[1.1rem] shrink-0" />
+      <span className="whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">{item.nome}</span>
     </Link>
   );
 }
@@ -37,14 +37,20 @@ export default function AppShell({ children }) {
   const pathname = usePathname();
 
   return (
-    <div className="app-frame min-h-screen lg:grid lg:grid-cols-[14.5rem_1fr]">
-      <aside className="sidebar sticky top-0 hidden h-screen flex-col px-5 py-7 lg:flex">
-        <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="ml-2 h-auto w-24" />
-        <p className="mb-3 mt-12 px-3 text-[.62rem] font-bold uppercase tracking-[.18em] text-white/30">Menu</p>
+    <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.25rem_1fr]">
+      <aside className="sidebar group/sidebar sticky top-0 z-40 hidden h-screen w-[5.25rem] flex-col overflow-hidden px-4 py-6 transition-[width] duration-300 ease-out hover:w-[14.5rem] focus-within:w-[14.5rem] lg:flex">
+        <div className="relative h-10 shrink-0">
+          <Image src="/logomarca/simbolo-bau-3d.png" alt="Cifra" width={500} height={499} priority className="absolute left-1 top-0 h-9 w-9 object-contain opacity-100 transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
+          <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="absolute left-1 top-1 h-auto w-24 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100" />
+        </div>
+        <p className="mb-3 mt-8 whitespace-nowrap px-3 text-[.62rem] font-bold uppercase tracking-[.18em] text-white/30 opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">Menu</p>
         <nav className="flex flex-col gap-1" aria-label="Navegação principal">
           {navegacao.map((item) => <ItemNavegacao key={item.nome} item={item} ativo={pathname === item.href} />)}
         </nav>
-        <div className="mt-auto border-t border-white/8 px-3 pt-5"><p className="text-xs font-semibold text-white/45">Cifra pessoal</p><p className="mt-1 text-[.65rem] text-white/25">Versão inicial</p></div>
+        <div className="mt-auto flex items-center gap-3 border-t border-white/8 px-2 pt-5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-xs font-extrabold text-white">P</span>
+          <div className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100"><p className="text-xs font-bold text-white/80">Paulo</p><p className="mt-0.5 text-[.65rem] text-white/35">Perfil pessoal</p></div>
+        </div>
       </aside>
 
       <div className="min-w-0 pb-20 lg:pb-0">
@@ -52,7 +58,7 @@ export default function AppShell({ children }) {
           <Image src="/logomarca/cifra-horizontal-verde.png" alt="Cifra" width={765} height={326} priority className="h-auto w-24" />
           <span className="grid size-8 place-items-center rounded-full bg-primary text-xs font-extrabold text-white">P</span>
         </header>
-        {children}
+        <div key={pathname} className="page-transition">{children}</div>
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[4.5rem] items-center border-t border-primary/10 bg-white/95 px-1 backdrop-blur lg:hidden" aria-label="Navegação móvel">

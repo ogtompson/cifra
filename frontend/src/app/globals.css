@@ -11,6 +11,13 @@
   --app-surface: #f8f6f1;
   --positive: #087b55;
   --error: #b44337;
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --shadow-soft: 0 10px 35px rgba(0, 58, 48, 0.055);
+  --shadow-raised: 0 18px 45px rgba(0, 58, 48, 0.1);
+  --motion-fast: 160ms;
+  --motion-base: 240ms;
 }
 
 @theme inline {
@@ -49,6 +56,20 @@ textarea {
   font: inherit;
 }
 
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(0, 100, 99, 0.2);
+  outline-offset: 2px;
+}
+
 ::selection {
   background: var(--secondary);
   color: var(--white);
@@ -58,8 +79,26 @@ textarea {
 .sidebar { background: #003a30; box-shadow: 10px 0 35px rgba(0, 58, 48, 0.05); }
 .balance-panel { background: radial-gradient(circle at 80% 10%, rgba(0, 126, 114, 0.45), transparent 18rem), linear-gradient(120deg, #00483b, #002f27 65%); }
 .balance-panel::before { position: absolute; inset: 0; opacity: 0.22; background-image: repeating-radial-gradient(ellipse at 90% 90%, transparent 0 18px, rgba(255,255,255,.13) 19px 20px); content: ""; }
-.paper-card { border: 1px solid rgba(0, 58, 48, 0.08); background: rgba(254, 254, 254, 0.92); box-shadow: 0 12px 40px rgba(0, 58, 48, 0.055); }
+.paper-card { border: 1px solid rgba(0, 58, 48, 0.08); background: rgba(254, 254, 254, 0.92); box-shadow: var(--shadow-soft); }
 .gold-surface { background: linear-gradient(135deg, #f8ead4, #ead0a8); }
+
+.page-transition { animation: page-enter var(--motion-base) ease-out both; }
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 @media (max-width: 1023px) {
   .app-frame { background: var(--app-surface); }
