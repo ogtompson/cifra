@@ -44,7 +44,7 @@ export default function AppShell({ children }) {
     <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.25rem_1fr]">
       <aside className="sidebar group/sidebar sticky top-0 z-40 hidden h-screen w-[5.25rem] flex-col overflow-hidden px-4 py-6 transition-[width] duration-300 ease-out hover:w-[14.5rem] focus-within:w-[14.5rem] lg:flex">
         <div className="relative h-10 shrink-0">
-          <Image src="/logomarca/simbolo-bau-3d.png" alt="Cifra" width={500} height={499} priority className="absolute left-1 top-0 h-9 w-9 object-contain opacity-100 transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
+          <Image src="/logomarca/simbolo-bau-preenchido.svg" alt="Cifra" width={1046} height={943} priority className="absolute left-1 top-0 h-9 w-9 object-contain opacity-100 transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
           <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="absolute left-1 top-1 h-auto w-24 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100" />
         </div>
         <p className="mb-3 mt-8 whitespace-nowrap px-3 text-[.62rem] font-bold uppercase tracking-[.18em] text-white/30 opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">Menu</p>
