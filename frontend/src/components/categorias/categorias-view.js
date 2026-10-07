@@ -70,7 +70,7 @@ function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
 
         <form className="mt-7 space-y-5" onSubmit={enviar}>
           <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Nome</span><input name="nome" value={formulario.nome} onChange={(evento) => setFormulario((atual) => ({ ...atual, nome: evento.target.value }))} maxLength={100} required autoFocus placeholder="Ex.: Alimentação" className={campo} /></label>
-          <fieldset><legend className="mb-2 text-sm font-bold text-primary">Tipo</legend><div className="grid grid-cols-2 gap-3">{["DESPESA", "RECEITA"].map((tipo) => <label key={tipo} className={`cursor-pointer rounded-xl border px-4 py-3.5 text-center text-sm font-bold transition ${formulario.tipo === tipo ? "border-primary bg-primary text-white" : "border-primary/12 bg-background text-primary hover:border-primary/30"}`}><input type="radio" name="tipo" value={tipo} checked={formulario.tipo === tipo} onChange={(evento) => setFormulario((atual) => ({ ...atual, tipo: evento.target.value }))} className="sr-only" />{configuracao[tipo].singular[0].toUpperCase() + configuracao[tipo].singular.slice(1)}</label>)}</div></fieldset>
+          <fieldset><legend className="mb-2 text-sm font-bold text-primary">Tipo</legend><div className="operation-switch">{["DESPESA", "RECEITA"].map((tipo) => <label key={tipo} className={`operation-option ${formulario.tipo === tipo ? "is-active" : ""}`}><input type="radio" name="tipo" value={tipo} checked={formulario.tipo === tipo} onChange={(evento) => setFormulario((atual) => ({ ...atual, tipo: evento.target.value }))} className="sr-only" />{configuracao[tipo].singular[0].toUpperCase() + configuracao[tipo].singular.slice(1)}</label>)}</div></fieldset>
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando} className={botaoPrimario}>{salvando ? "Salvando..." : categoria ? "Salvar alterações" : "Criar categoria"}</button></div>
         </form>
@@ -82,7 +82,7 @@ function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
 function ItemCategoria({ categoria, aoEditar, aoExcluir }) {
   const estilo = categoria.tipo === "RECEITA" ? "bg-positive/10 text-positive" : "bg-error/8 text-error";
   return (
-    <article className="group grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-primary/7 py-4 last:border-0">
+    <article className="group -mx-2 grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border-b border-primary/7 px-2 py-3.5 transition-colors last:border-0 hover:bg-secondary/[0.045] sm:py-4">
       <span className={`grid size-11 place-items-center rounded-2xl ${estilo}`}><Icone nome={iconeDaCategoria(categoria.nome)} /></span>
       <div className="min-w-0"><h3 className="truncate text-sm font-extrabold text-primary">{categoria.nome}</h3><p className="mt-0.5 text-xs text-foreground-soft">Categoria de {configuracao[categoria.tipo].singular}</p></div>
       <div className="flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"><button type="button" onClick={() => aoEditar(categoria)} className="grid size-9 place-items-center rounded-lg text-foreground-soft transition hover:bg-secondary/10 hover:text-secondary" aria-label={`Editar ${categoria.nome}`}><Icone nome="editar" className="size-4" /></button><button type="button" onClick={() => aoExcluir(categoria)} className="grid size-9 place-items-center rounded-lg text-foreground-soft transition hover:bg-error/10 hover:text-error" aria-label={`Excluir ${categoria.nome}`}><Icone nome="excluir" className="size-4" /></button></div>
@@ -147,8 +147,8 @@ export default function CategoriasView() {
   }
 
   return (
-    <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-bold text-secondary">Cada real no lugar certo</p><h1 className="mt-1 text-3xl font-extrabold tracking-[-0.035em] text-primary sm:text-4xl">Categorias</h1><p className="mt-2 text-sm text-foreground-soft">Organize suas movimentações e entenda seus hábitos financeiros.</p>{!carregando && <p className="mt-3 text-xs font-semibold text-foreground-soft"><strong className="text-primary">{separadas.DESPESA.length}</strong> de despesa · <strong className="text-primary">{separadas.RECEITA.length}</strong> de receita</p>}</div><button type="button" onClick={() => abrirCriacao()} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova categoria</button></div>
+    <main className="page-shell">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="page-eyebrow">Cada real no lugar certo</p><h1 className="page-title">Categorias</h1><p className="page-description">Organize suas movimentações e entenda seus hábitos financeiros.</p>{!carregando && <p className="mt-3 text-xs font-semibold text-foreground-soft"><strong className="text-primary">{separadas.DESPESA.length}</strong> de despesa · <strong className="text-primary">{separadas.RECEITA.length}</strong> de receita</p>}</div><button type="button" onClick={() => abrirCriacao()} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova categoria</button></div>
 
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregarCategorias} />}
 

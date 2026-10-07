@@ -338,12 +338,12 @@ export default function ContasView() {
   }
 
   return (
-    <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+    <main className="page-shell">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-secondary">Seu patrimônio em um só lugar</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Minhas contas</h1>
-          <p className="mt-2 text-sm text-foreground-soft">Acompanhe onde está seu dinheiro e mantenha os saldos organizados.</p>
+          <p className="page-eyebrow">Seu patrimônio em um só lugar</p>
+          <h1 className="page-title">Minhas contas</h1>
+          <p className="page-description">Acompanhe onde está seu dinheiro e mantenha os saldos organizados.</p>
         </div>
         <button type="button" onClick={abrirCriacao} className={botaoPrimario}>
           <Icone nome="mais" className="size-4" /> Nova conta
