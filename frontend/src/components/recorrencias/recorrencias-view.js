@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, Switch } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -72,20 +72,17 @@ function ModalRecorrencia({ recorrencia, contas, categorias, aoFechar, aoSalvar 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-primary/45 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
-      <section className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-recorrencia">
-        <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-secondary">{recorrencia ? "Editar" : "Nova"} recorrência</p><h2 id="titulo-modal-recorrencia" className="mt-2 text-2xl font-extrabold tracking-tight text-primary">{recorrencia ? recorrencia.descricao : "Planeje uma vez. Repita sem esforço."}</h2></div><button type="button" onClick={aoFechar} className="grid size-10 place-items-center rounded-full bg-app-surface text-primary" aria-label="Fechar"><Icone nome="fechar" /></button></div>
-        <form className="mt-7 space-y-5" onSubmit={enviar}>
+    <ModalPadrao eyebrow={`${recorrencia ? "Editar" : "Nova"} recorrência`} titulo={recorrencia ? recorrencia.descricao : "Planeje uma vez. Repita sem esforço."} aoFechar={aoFechar} tamanho="xl">
+        <form className="modal-body space-y-5" onSubmit={enviar}>
           <fieldset><legend className="mb-2 text-sm font-bold text-primary">Movimentação</legend><div className="operation-switch">{[{ valor: "DESPESA", rotulo: "Despesa" }, { valor: "RECEITA", rotulo: "Receita" }].map((tipo) => <label key={tipo.valor} className={`operation-option ${formulario.tipo === tipo.valor ? (tipo.valor === "RECEITA" ? "is-positive" : "is-negative") : ""}`}><input type="radio" name="tipo" value={tipo.valor} checked={formulario.tipo === tipo.valor} onChange={alterar} className="sr-only" />{tipo.rotulo}</label>)}</div></fieldset>
           <div className="grid gap-5 sm:grid-cols-[1.5fr_.5fr]"><label><span className="mb-2 block text-sm font-bold text-primary">Descrição</span><input className={campo} name="descricao" value={formulario.descricao} onChange={alterar} maxLength={150} required autoFocus placeholder="Ex.: Aluguel" /></label><label><span className="mb-2 block text-sm font-bold text-primary">Valor</span><input className={campo} name="valor" value={formulario.valor} onChange={alterar} type="number" min="0.01" step="0.01" required /></label></div>
           <div className="grid gap-5 sm:grid-cols-3"><label><span className="mb-2 block text-sm font-bold text-primary">Frequência</span><select className={campo} name="frequencia" value={formulario.frequencia} onChange={alterar}><option value="SEMANAL">Semanal</option><option value="MENSAL">Mensal</option><option value="ANUAL">Anual</option></select></label>{formulario.frequencia === "MENSAL" && <label><span className="mb-2 block text-sm font-bold text-primary">Dia do mês</span><input className={campo} name="diaDoMes" value={formulario.diaDoMes} onChange={alterar} type="number" min="1" max="31" required /></label>}<label><span className="mb-2 block text-sm font-bold text-primary">Data inicial</span><input className={campo} name="dataInicio" value={formulario.dataInicio} onChange={alterar} type="date" required /></label><label><span className="mb-2 block text-sm font-bold text-primary">Data final <small className="font-normal text-foreground-soft">(opcional)</small></span><input className={campo} name="dataFim" value={formulario.dataFim} onChange={alterar} min={formulario.dataInicio} type="date" /></label></div>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Conta</span><select className={campo} name="contaId" value={formulario.contaId} onChange={alterar} required><option value="">Selecione</option>{contas.map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label><span className="mb-2 block text-sm font-bold text-primary">Categoria</span><select className={campo} name="categoriaId" value={formulario.categoriaId} onChange={alterar} required><option value="">Selecione</option>{categoriasCompativeis.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></label></div>
           {!categoriasCompativeis.length && <p className="rounded-xl bg-accent/8 px-4 py-3 text-sm text-accent">Você ainda não possui uma categoria compatível. <Link href="/categorias" className="font-bold underline">Criar categoria</Link></p>}
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : recorrencia ? "Salvar alterações" : "Criar recorrência"}</button></div>
+          <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : recorrencia ? "Salvar alterações" : "Criar recorrência"}</button></div>
         </form>
-      </section>
-    </div>
+    </ModalPadrao>
   );
 }
 
@@ -99,10 +96,7 @@ function LinhaRecorrencia({ item, aoEditar, aoAlternar, aoExcluir }) {
       <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft lg:hidden">Frequência</p><span className="text-sm font-semibold text-primary">{frequencias[item.frequencia]}</span></div>
       <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft">Próxima ocorrência</p><span className="mt-1 block text-sm font-bold text-primary">{proxima ? dataCurta.format(proxima) : item.ativa ? "Ciclo encerrado" : "Pausada"}</span></div>
       <div className="flex items-center justify-end gap-1 lg:justify-start">
-        <button type="button" role="switch" aria-checked={item.ativa} onClick={() => aoAlternar(item)} className="mr-1 flex items-center gap-2 rounded-full px-1.5 py-1 text-[.68rem] font-extrabold text-foreground-soft transition hover:bg-primary/5" aria-label={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`}>
-          <span className={`relative h-5 w-9 rounded-full transition-colors ${item.ativa ? "bg-positive" : "bg-primary/18"}`}><span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${item.ativa ? "translate-x-[1.1rem]" : "translate-x-0.5"}`} /></span>
-          {item.ativa ? "Ativa" : "Pausada"}
-        </button>
+        <Switch selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} />
         <button type="button" onClick={() => aoEditar(item)} className="icon-action" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button>
       </div>
     </article>
@@ -141,17 +135,39 @@ export default function RecorrenciasView() {
   const filtradas = useMemo(() => dados.recorrencias.filter((item) => !situacao || item.ativa === (situacao === "ATIVA")), [dados.recorrencias, situacao]);
   const separadas = useMemo(() => ({ DESPESA: filtradas.filter((item) => item.tipo === "DESPESA"), RECEITA: filtradas.filter((item) => item.tipo === "RECEITA") }), [filtradas]);
   const totais = useMemo(() => ({ todas: dados.recorrencias.length, ativas: dados.recorrencias.filter((item) => item.ativa).length, pausadas: dados.recorrencias.filter((item) => !item.ativa).length }), [dados.recorrencias]);
+  const valoresAtivos = useMemo(() => dados.recorrencias.filter((item) => item.ativa).reduce((total, item) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor) }), { RECEITA: 0, DESPESA: 0 }), [dados.recorrencias]);
+  const agenda = useMemo(() => dados.recorrencias.map((item) => ({ item, data: proximaOcorrencia(item) })).filter(({ data }) => data).sort((a, b) => a.data - b.data).slice(0, 4), [dados.recorrencias]);
 
   function abrirCriacao() { setRecorrenciaEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setRecorrenciaEditada(item); setModalAberto(true); }
   async function salvar(payload) { await apiFetch(recorrenciaEditada ? `/recorrencias/${recorrenciaEditada.id}` : "/recorrencias", { method: recorrenciaEditada ? "PUT" : "POST", body: JSON.stringify(payload) }); setModalAberto(false); setRecorrenciaEditada(null); await carregar(); }
-  async function alternarSituacao(item) { setErro(""); try { await apiFetch(`/recorrencias/${item.id}`, { method: "PUT", body: JSON.stringify({ descricao: item.descricao, valor: item.valor, tipo: item.tipo, frequencia: item.frequencia, diaDoMes: item.diaDoMes, dataInicio: item.dataInicio, dataFim: item.dataFim, ativa: !item.ativa, contaId: item.contaId, categoriaId: item.categoriaId }) }); await carregar(); } catch (error) { setErro(error.message); } }
+  async function alternarSituacao(item) {
+    setErro("");
+    setDados((atual) => ({ ...atual, recorrencias: atual.recorrencias.map((recorrencia) => recorrencia.id === item.id ? { ...recorrencia, ativa: !item.ativa } : recorrencia) }));
+    try {
+      await apiFetch(`/recorrencias/${item.id}`, { method: "PUT", body: JSON.stringify({ descricao: item.descricao, valor: item.valor, tipo: item.tipo, frequencia: item.frequencia, diaDoMes: item.diaDoMes, dataInicio: item.dataInicio, dataFim: item.dataFim, ativa: !item.ativa, contaId: item.contaId, categoriaId: item.categoriaId }) });
+    } catch (error) {
+      setDados((atual) => ({ ...atual, recorrencias: atual.recorrencias.map((recorrencia) => recorrencia.id === item.id ? item : recorrencia) }));
+      setErro(error.message);
+    }
+  }
   async function excluir() { setErro(""); setExcluindo(true); try { await apiFetch(`/recorrencias/${recorrenciaExcluida.id}`, { method: "DELETE" }); setRecorrenciaExcluida(null); await carregar(); } catch (error) { setErro(error.message); } finally { setExcluindo(false); } }
 
   return (
     <main className="page-shell">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="page-eyebrow">O futuro também entra no planejamento</p><h1 className="page-title">Recorrências</h1><p className="page-description">Acompanhe os compromissos e receitas que se repetem.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3 sm:mt-7">
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-[.65fr_1.35fr]">
+        <div className="balance-panel relative overflow-hidden rounded-2xl p-5 text-white">
+          <div className="relative z-10"><p className="text-[.65rem] font-bold uppercase tracking-[.13em] text-white/55">Valores ativos cadastrados</p><div className="mt-5 grid grid-cols-2 gap-4"><div><span className="text-[.65rem] text-white/50">A receber</span><strong className="mt-1 block text-lg text-[#9ae4c1]">{moeda.format(valoresAtivos.RECEITA)}</strong></div><div><span className="text-[.65rem] text-white/50">A pagar</span><strong className="mt-1 block text-lg text-[#f2ae99]">{moeda.format(valoresAtivos.DESPESA)}</strong></div></div><p className="mt-5 text-[.65rem] leading-5 text-white/45">Os valores respeitam a frequência individual de cada recorrência.</p></div>
+        </div>
+        <div className="paper-card rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between"><div><h2 className="text-sm font-extrabold text-primary">Próximas ocorrências</h2><p className="mt-0.5 text-xs text-foreground-soft">Sua agenda financeira mais próxima</p></div><span className="grid size-9 place-items-center rounded-xl bg-secondary/8 text-secondary"><Icone nome="calendario" className="size-4" /></span></div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">{agenda.length ? agenda.map(({ item, data }) => <div key={item.id} className="flex items-center gap-3 rounded-xl bg-primary/[0.035] px-3 py-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-center shadow-sm"><strong className="block text-xs text-primary">{data.getDate()}</strong></span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-primary">{item.descricao}</p><p className="mt-0.5 text-[.62rem] capitalize text-foreground-soft">{dataCurta.format(data)}</p></div><strong className={`text-xs ${item.tipo === "RECEITA" ? "text-positive" : "text-error"}`}>{moeda.format(item.valor)}</strong></div>) : <p className="col-span-2 py-5 text-center text-xs text-foreground-soft">Nenhuma ocorrência ativa prevista.</p>}</div>
+        </div>
+      </section>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
         <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
         <FiltroSegmentado rotulo="Situação das recorrências" valor={situacao} aoAlterar={setSituacao} opcoes={[{ valor: "", rotulo: `Todas (${totais.todas})` }, { valor: "ATIVA", rotulo: `Ativas (${totais.ativas})` }, { valor: "PAUSADA", rotulo: `Pausadas (${totais.pausadas})` }]} />
       </div>
