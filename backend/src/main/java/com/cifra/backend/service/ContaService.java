@@ -2,12 +2,15 @@ package com.cifra.backend.service;
 
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.ExclusaoContaResponse;
 import com.cifra.backend.dto.SaldoContaResponse;
+import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +23,16 @@ public class ContaService {
 
     private final ContaRepository contaRepository;
     private final TransacaoRepository transacaoRepository;
+    private final TransacaoRecorrenteRepository transacaoRecorrenteRepository;
 
-    public ContaService(ContaRepository contaRepository, TransacaoRepository transacaoRepository) {
+    public ContaService(
+            ContaRepository contaRepository,
+            TransacaoRepository transacaoRepository,
+            TransacaoRecorrenteRepository transacaoRecorrenteRepository
+    ) {
         this.contaRepository = contaRepository;
         this.transacaoRepository = transacaoRepository;
+        this.transacaoRecorrenteRepository = transacaoRecorrenteRepository;
     }
 
     @Transactional(readOnly = true)
@@ -72,9 +81,40 @@ public class ContaService {
         return paraResponse(contaRepository.save(conta));
     }
 
+    @Transactional(readOnly = true)
+    public ExclusaoContaResponse consultarExclusao(Long id) {
+        Conta conta = buscarEntidade(id);
+        long totalTransacoes = transacaoRepository.countByContaId(id);
+        long totalRecorrencias = transacaoRecorrenteRepository.countByContaId(id);
+
+        return new ExclusaoContaResponse(
+                conta.getId(),
+                conta.getNome(),
+                totalTransacoes,
+                totalRecorrencias,
+                totalTransacoes == 0 && totalRecorrencias == 0
+        );
+    }
+
     @Transactional
-    public void excluir(Long id) {
-        contaRepository.delete(buscarEntidade(id));
+    public void excluir(Long id, boolean excluirDependencias) {
+        Conta conta = buscarEntidade(id);
+        long totalTransacoes = transacaoRepository.countByContaId(id);
+        long totalRecorrencias = transacaoRecorrenteRepository.countByContaId(id);
+
+        if (!excluirDependencias && (totalTransacoes > 0 || totalRecorrencias > 0)) {
+            throw new RegraNegocioException(
+                    "A conta possui " + totalTransacoes + " transa\u00e7\u00e3o(\u00f5es) e "
+                            + totalRecorrencias + " recorr\u00eancia(s). Confirme a exclus\u00e3o do hist\u00f3rico vinculado."
+            );
+        }
+
+        if (excluirDependencias) {
+            transacaoRepository.deleteByContaId(id);
+            transacaoRecorrenteRepository.deleteByContaId(id);
+        }
+
+        contaRepository.delete(conta);
     }
 
     private Conta buscarEntidade(Long id) {

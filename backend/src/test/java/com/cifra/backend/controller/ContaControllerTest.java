@@ -1,6 +1,7 @@
 package com.cifra.backend.controller;
 
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.ExclusaoContaResponse;
 import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.exception.ApiExceptionHandler;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
@@ -18,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -112,5 +114,27 @@ class ContaControllerTest {
                 .andExpect(jsonPath("$.totalReceitas").value(2500.00))
                 .andExpect(jsonPath("$.totalDespesas").value(750.00))
                 .andExpect(jsonPath("$.saldoAtual").value(2750.00));
+    }
+
+    @Test
+    void deveRetornarImpactoDaExclusao() throws Exception {
+        when(contaService.consultarExclusao(1L))
+                .thenReturn(new ExclusaoContaResponse(1L, "Nubank", 12L, 2L, false));
+
+        mockMvc.perform(get("/api/contas/1/exclusao"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contaNome").value("Nubank"))
+                .andExpect(jsonPath("$.totalTransacoes").value(12))
+                .andExpect(jsonPath("$.totalRecorrencias").value(2))
+                .andExpect(jsonPath("$.podeExcluirDiretamente").value(false));
+    }
+
+    @Test
+    void deveEncaminharConfirmacaoDeExclusaoDasDependencias() throws Exception {
+        mockMvc.perform(delete("/api/contas/1")
+                        .queryParam("excluirDependencias", "true"))
+                .andExpect(status().isNoContent());
+
+        org.mockito.Mockito.verify(contaService).excluir(1L, true);
     }
 }

@@ -10,4 +10,8 @@ public interface TransacaoRecorrenteRepository extends JpaRepository<TransacaoRe
     List<TransacaoRecorrente> findByAtivaTrue();
 
     List<TransacaoRecorrente> findByAtiva(boolean ativa, Sort sort);
+
+    long countByContaId(Long contaId);
+
+    long deleteByContaId(Long contaId);
 }

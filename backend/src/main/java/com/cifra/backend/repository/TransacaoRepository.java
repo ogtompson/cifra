@@ -13,6 +13,10 @@ import java.util.List;
 public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
     List<Transacao> findByContaIdOrderByDataDescIdDesc(Long contaId);
 
+    long countByContaId(Long contaId);
+
+    long deleteByContaId(Long contaId);
+
     boolean existsByRecorrenciaId(Long recorrenciaId);
 
     boolean existsByRecorrenciaIdAndData(Long recorrenciaId, LocalDate data);

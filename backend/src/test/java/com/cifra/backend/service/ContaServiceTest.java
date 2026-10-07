@@ -2,16 +2,20 @@ package com.cifra.backend.service;
 
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.ExclusaoContaResponse;
 import com.cifra.backend.dto.SaldoContaResponse;
+import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.enums.TipoConta;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
@@ -23,6 +27,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,11 +41,18 @@ class ContaServiceTest {
     @Mock
     private TransacaoRepository transacaoRepository;
 
+    @Mock
+    private TransacaoRecorrenteRepository transacaoRecorrenteRepository;
+
     private ContaService contaService;
 
     @BeforeEach
     void configurar() {
-        contaService = new ContaService(contaRepository, transacaoRepository);
+        contaService = new ContaService(
+                contaRepository,
+                transacaoRepository,
+                transacaoRecorrenteRepository
+        );
     }
 
     @Test
@@ -112,13 +125,61 @@ class ContaServiceTest {
     }
 
     @Test
-    void deveExcluirContaExistente() {
+    void deveExcluirContaSemDependencias() {
         Conta conta = conta(1L, "Carteira", "20.00", TipoConta.DINHEIRO);
         when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
 
-        contaService.excluir(1L);
+        contaService.excluir(1L, false);
 
         verify(contaRepository).delete(conta);
+    }
+
+    @Test
+    void deveInformarImpactoDaExclusao() {
+        Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(transacaoRepository.countByContaId(1L)).thenReturn(12L);
+        when(transacaoRecorrenteRepository.countByContaId(1L)).thenReturn(2L);
+
+        ExclusaoContaResponse resultado = contaService.consultarExclusao(1L);
+
+        assertThat(resultado).isEqualTo(new ExclusaoContaResponse(
+                1L, "Nubank", 12L, 2L, false
+        ));
+    }
+
+    @Test
+    void deveImpedirExclusaoSilenciosaDeContaComDependencias() {
+        Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(transacaoRepository.countByContaId(1L)).thenReturn(12L);
+        when(transacaoRecorrenteRepository.countByContaId(1L)).thenReturn(2L);
+
+        assertThatThrownBy(() -> contaService.excluir(1L, false))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("12 transa\u00e7\u00e3o(\u00f5es)")
+                .hasMessageContaining("2 recorr\u00eancia(s)");
+
+        verify(contaRepository, never()).delete(conta);
+    }
+
+    @Test
+    void deveExcluirDependenciasAntesDaContaQuandoConfirmado() {
+        Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(transacaoRepository.countByContaId(1L)).thenReturn(12L);
+        when(transacaoRecorrenteRepository.countByContaId(1L)).thenReturn(2L);
+
+        contaService.excluir(1L, true);
+
+        InOrder ordem = inOrder(
+                transacaoRepository,
+                transacaoRecorrenteRepository,
+                contaRepository
+        );
+        ordem.verify(transacaoRepository).deleteByContaId(1L);
+        ordem.verify(transacaoRecorrenteRepository).deleteByContaId(1L);
+        ordem.verify(contaRepository).delete(conta);
     }
 
     @Test

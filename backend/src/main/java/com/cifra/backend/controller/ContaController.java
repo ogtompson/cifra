@@ -2,6 +2,7 @@ package com.cifra.backend.controller;
 
 import com.cifra.backend.dto.ContaRequest;
 import com.cifra.backend.dto.ContaResponse;
+import com.cifra.backend.dto.ExclusaoContaResponse;
 import com.cifra.backend.dto.SaldoContaResponse;
 import com.cifra.backend.service.ContaService;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -44,6 +46,11 @@ public class ContaController {
         return contaService.calcularSaldo(id);
     }
 
+    @GetMapping("/{id}/exclusao")
+    public ExclusaoContaResponse consultarExclusao(@PathVariable Long id) {
+        return contaService.consultarExclusao(id);
+    }
+
     @PostMapping
     public ResponseEntity<ContaResponse> criar(
             @Valid @RequestBody ContaRequest request,
@@ -65,8 +72,11 @@ public class ContaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Long id) {
-        contaService.excluir(id);
+    public ResponseEntity<Void> excluir(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean excluirDependencias
+    ) {
+        contaService.excluir(id, excluirDependencias);
         return ResponseEntity.noContent().build();
     }
 }
