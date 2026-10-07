@@ -22,7 +22,7 @@ function rotuloTipo(tipo) {
 }
 
 async function buscarContas() {
-  const lista = await apiFetch("/contas");
+  const lista = await apiFetch("/contas?incluirArquivadas=true");
   const saldos = await Promise.all(
     lista.map((conta) => apiFetch(`/contas/${conta.id}/saldo`)),
   );
@@ -107,9 +107,10 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
   );
 }
 
-function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar }) {
+function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
   const [confirmado, setConfirmado] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [arquivando, setArquivando] = useState(false);
   const [erro, setErro] = useState("");
   const possuiHistorico = !impacto.podeExcluirDiretamente;
 
@@ -121,6 +122,17 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar }) {
     } catch (error) {
       setErro(error.message);
       setExcluindo(false);
+    }
+  }
+
+  async function arquivar() {
+    setErro("");
+    setArquivando(true);
+    try {
+      await aoArquivar();
+    } catch (error) {
+      setErro(error.message);
+      setArquivando(false);
     }
   }
 
@@ -139,7 +151,7 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar }) {
 
         {possuiHistorico ? (
           <>
-            <p className="mt-5 text-sm leading-6 text-foreground-soft">Esta conta ainda possui informações vinculadas. Ao continuar, elas também serão excluídas definitivamente.</p>
+            <p className="mt-5 text-sm leading-6 text-foreground-soft">Esta conta ainda possui informações vinculadas. Arquive-a para preservar o histórico ou confirme abaixo para excluir tudo definitivamente.</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalTransacoes}</strong><span className="mt-1 block text-xs text-foreground-soft">transações</span></div>
               <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalRecorrencias}</strong><span className="mt-1 block text-xs text-foreground-soft">recorrências</span></div>
@@ -157,12 +169,42 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar }) {
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Cancelar</button>
+          {possuiHistorico && (
+            <button type="button" onClick={arquivar} disabled={arquivando || excluindo} className="rounded-xl border border-primary/20 px-5 py-3 text-sm font-bold text-primary transition hover:bg-primary/7 disabled:cursor-wait disabled:opacity-45">
+              {arquivando ? "Arquivando..." : "Arquivar conta"}
+            </button>
+          )}
           <button type="button" onClick={confirmar} disabled={excluindo || (possuiHistorico && !confirmado)} className="rounded-xl bg-error px-5 py-3 text-sm font-bold text-white transition hover:bg-[#96362d] disabled:cursor-not-allowed disabled:opacity-45">
             {excluindo ? "Excluindo..." : possuiHistorico ? "Excluir conta e histórico" : "Excluir conta"}
           </button>
         </div>
       </section>
     </div>
+  );
+}
+
+function ContaArquivada({ conta, aoRestaurar }) {
+  const [restaurando, setRestaurando] = useState(false);
+
+  async function restaurar() {
+    setRestaurando(true);
+    try {
+      await aoRestaurar(conta);
+    } finally {
+      setRestaurando(false);
+    }
+  }
+
+  return (
+    <li className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-white/55 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="font-bold text-primary">{conta.nome}</p>
+        <p className="mt-1 text-xs text-foreground-soft">{rotuloTipo(conta.tipo)} · saldo preservado de {formatoMoeda.format(conta.saldoAtual)}</p>
+      </div>
+      <button type="button" onClick={restaurar} disabled={restaurando} className="rounded-xl border border-primary/15 px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-primary/7 disabled:cursor-wait disabled:opacity-50">
+        {restaurando ? "Restaurando..." : "Restaurar conta"}
+      </button>
+    </li>
   );
 }
 
@@ -237,7 +279,9 @@ export default function ContasView() {
     };
   }, []);
 
-  const saldoTotal = useMemo(() => contas.reduce((total, conta) => total + Number(conta.saldoAtual), 0), [contas]);
+  const contasAtivas = useMemo(() => contas.filter((conta) => !conta.arquivada), [contas]);
+  const contasArquivadas = useMemo(() => contas.filter((conta) => conta.arquivada), [contas]);
+  const saldoTotal = useMemo(() => contasAtivas.reduce((total, conta) => total + Number(conta.saldoAtual), 0), [contasAtivas]);
 
   function abrirCriacao() {
     setContaEditada(null);
@@ -278,6 +322,20 @@ export default function ContasView() {
     }
   }
 
+  async function alterarArquivamento(contaId, arquivada) {
+    try {
+      await apiFetch(`/contas/${contaId}/arquivamento`, {
+        method: "PATCH",
+        body: JSON.stringify({ arquivada }),
+      });
+      setImpactoExclusao(null);
+      await carregarContas();
+    } catch (error) {
+      setErro(error.message);
+      throw error;
+    }
+  }
+
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -298,7 +356,7 @@ export default function ContasView() {
         </div>
         <div className="gold-surface flex flex-col justify-center rounded-[1.75rem] border border-accent/10 p-6 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-foreground-soft">Contas cadastradas</p>
-          <p className="mt-3 text-3xl font-extrabold tracking-tight text-primary">{carregando ? "—" : contas.length}</p>
+          <p className="mt-3 text-3xl font-extrabold tracking-tight text-primary">{carregando ? "—" : contasAtivas.length}</p>
           <p className="mt-2 text-xs text-foreground-soft">Organizadas e sempre à mão.</p>
         </div>
       </section>
@@ -315,9 +373,9 @@ export default function ContasView() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Carregando contas">
             {[1, 2, 3].map((item) => <div key={item} className="h-56 animate-pulse rounded-2xl bg-primary/6" />)}
           </div>
-        ) : contas.length > 0 ? (
+        ) : contasAtivas.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-            {contas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={solicitarExclusao} />)}
+            {contasAtivas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={solicitarExclusao} />)}
           </div>
         ) : !erro ? (
           <div className="rounded-[2rem] border border-dashed border-primary/20 bg-background px-6 py-14 text-center">
@@ -329,8 +387,20 @@ export default function ContasView() {
         ) : null}
       </section>
 
+      {!carregando && contasArquivadas.length > 0 && (
+        <section className="mt-10 rounded-[1.5rem] border border-primary/8 bg-primary/[0.025] p-5 sm:p-6">
+          <h2 className="text-base font-extrabold text-primary">Contas arquivadas</h2>
+          <p className="mt-1 text-xs leading-5 text-foreground-soft">Ficam fora dos saldos consolidados e de novos lançamentos, sem perder o histórico.</p>
+          <ul className="mt-4 grid gap-3 lg:grid-cols-2">
+            {contasArquivadas.map((conta) => (
+              <ContaArquivada key={conta.id} conta={conta} aoRestaurar={(item) => alterarArquivamento(item.id, false)} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {modalAberto && <ModalConta conta={contaEditada} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
-      {impactoExclusao && <ModalExclusaoConta impacto={impactoExclusao} aoFechar={() => setImpactoExclusao(null)} aoConfirmar={confirmarExclusao} />}
+      {impactoExclusao && <ModalExclusaoConta impacto={impactoExclusao} aoFechar={() => setImpactoExclusao(null)} aoConfirmar={confirmarExclusao} aoArquivar={() => alterarArquivamento(impactoExclusao.contaId, true)} />}
     </main>
   );
 }
