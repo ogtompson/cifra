@@ -8,7 +8,9 @@ import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const frequencias = { SEMANAL: "Semanal", MENSAL: "Mensal", ANUAL: "Anual" };
+const diasSemana = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 async function buscarDados() {
   const [recorrencias, contas, categorias] = await Promise.all([apiFetch("/recorrencias"), apiFetch("/contas"), apiFetch("/categorias")]);
@@ -40,6 +42,35 @@ function proximaOcorrencia(item) {
 
   if (item.dataFim && proxima > criarData(item.dataFim)) return null;
   return proxima;
+}
+
+function ocorrenciasNoMes(item, referencia) {
+  if (!item.ativa) return [];
+  const inicioMes = new Date(referencia.getFullYear(), referencia.getMonth(), 1, 12);
+  const fimMes = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0, 12);
+  const inicio = criarData(item.dataInicio);
+  const fim = item.dataFim ? criarData(item.dataFim) : null;
+  const dentroDoCiclo = (data) => data >= inicio && (!fim || data <= fim) && data >= inicioMes && data <= fimMes;
+
+  if (item.frequencia === "MENSAL") {
+    const dia = Math.min(item.diaDoMes, fimMes.getDate());
+    const data = new Date(referencia.getFullYear(), referencia.getMonth(), dia, 12);
+    return dentroDoCiclo(data) ? [data] : [];
+  }
+
+  if (item.frequencia === "ANUAL") {
+    const data = new Date(referencia.getFullYear(), inicio.getMonth(), inicio.getDate(), 12);
+    return dentroDoCiclo(data) ? [data] : [];
+  }
+
+  const datas = [];
+  const data = new Date(inicio);
+  while (data < inicioMes) data.setDate(data.getDate() + 7);
+  while (data <= fimMes && (!fim || data <= fim)) {
+    if (data >= inicio) datas.push(new Date(data));
+    data.setDate(data.getDate() + 7);
+  }
+  return datas;
 }
 
 function ModalRecorrencia({ recorrencia, contas, categorias, aoFechar, aoSalvar }) {
@@ -90,15 +121,12 @@ function LinhaRecorrencia({ item, aoEditar, aoAlternar, aoExcluir }) {
   const proxima = proximaOcorrencia(item);
   const receita = item.tipo === "RECEITA";
   return (
-    <article className="group grid grid-cols-2 gap-x-4 gap-y-3 border-b border-primary/6 px-4 py-3.5 transition-colors last:border-0 hover:bg-secondary/[0.025] lg:grid-cols-[minmax(12rem,1.4fr)_8rem_8rem_minmax(10rem,1fr)_auto] lg:items-center lg:px-6 lg:py-4">
-      <div className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1"><span className={`grid size-10 shrink-0 place-items-center rounded-xl lg:size-11 lg:rounded-2xl ${receita ? "bg-positive/10 text-positive" : "bg-error/8 text-error"}`}><Icone nome={receita ? "setaCima" : "setaBaixo"} className="size-4" /></span><div className="min-w-0"><h3 className="truncate text-sm font-extrabold text-primary">{item.descricao}</h3><p className="mt-0.5 truncate text-xs text-foreground-soft">{item.categoriaNome} · {item.contaNome}</p></div></div>
-      <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft lg:hidden">Valor</p><strong className={receita ? "text-positive" : "text-error"}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong></div>
-      <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft lg:hidden">Frequência</p><span className="text-sm font-semibold text-primary">{frequencias[item.frequencia]}</span></div>
-      <div><p className="text-[.65rem] font-bold uppercase tracking-wider text-foreground-soft">Próxima ocorrência</p><span className="mt-1 block text-sm font-bold text-primary">{proxima ? dataCurta.format(proxima) : item.ativa ? "Ciclo encerrado" : "Pausada"}</span></div>
-      <div className="flex items-center justify-end gap-1 lg:justify-start">
-        <Switch selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} />
-        <button type="button" onClick={() => aoEditar(item)} className="icon-action" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button>
-      </div>
+    <article className="group flex items-center gap-3 border-b border-primary/6 px-4 py-3.5 transition-colors last:border-0 hover:bg-secondary/[0.025] sm:px-5">
+      <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${receita ? "bg-positive/10 text-positive" : "bg-error/8 text-error"}`}><Icone nome={receita ? "setaCima" : "setaBaixo"} className="size-4" /></span>
+      <div className="min-w-0 flex-1"><h3 className="truncate text-sm font-extrabold text-primary">{item.descricao}</h3><p className="mt-0.5 truncate text-[.68rem] text-foreground-soft">{item.categoriaNome} · {frequencias[item.frequencia]} · {proxima ? dataCurta.format(proxima) : item.ativa ? "ciclo encerrado" : "pausada"}</p></div>
+      <strong className={`hidden whitespace-nowrap text-xs sm:block ${receita ? "text-positive" : "text-error"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong>
+      <Switch selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} />
+      <div className="flex items-center gap-0.5"><button type="button" onClick={() => aoEditar(item)} className="icon-action" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button></div>
     </article>
   );
 }
@@ -110,10 +138,33 @@ function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoA
         <div><h2 className="text-base font-extrabold text-primary">{titulo}</h2><p className="mt-0.5 text-xs text-foreground-soft">{descricao}</p></div>
         <span className="rounded-full bg-primary/6 px-2.5 py-1 text-[.68rem] font-extrabold text-primary">{itens.length}</span>
       </header>
-      <div className="paper-card overflow-hidden rounded-[1.35rem]">
+      <div className="paper-card min-h-24 overflow-hidden rounded-[1.35rem]">
         {carregando ? <EsqueletoLista linhas={3} /> : itens.length ? itens.map((item) => <LinhaRecorrencia key={item.id} item={item} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />) : (
           <div className="px-6 py-10 text-center"><p className="text-sm font-bold text-primary">Nenhum item aqui</p><p className="mt-1 text-xs text-foreground-soft">Crie uma recorrência para começar.</p><button type="button" onClick={aoCriar} className="mt-4 text-xs font-extrabold text-secondary hover:underline">Adicionar recorrência</button></div>
         )}
+      </div>
+    </section>
+  );
+}
+
+function CalendarioRecorrencias({ referencia, eventos, aoMesAnterior, aoProximoMes }) {
+  const hoje = new Date();
+  const diasNoMes = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0).getDate();
+  const primeiroDia = new Date(referencia.getFullYear(), referencia.getMonth(), 1).getDay();
+  const celulas = [...Array(primeiroDia).fill(null), ...Array.from({ length: diasNoMes }, (_, indice) => indice + 1)];
+  while (celulas.length % 7) celulas.push(null);
+
+  return (
+    <section className="paper-card mt-5 rounded-[1.5rem] p-4 sm:p-5">
+      <header className="flex items-start justify-between gap-4"><div><h2 className="text-sm font-extrabold capitalize text-primary">Calendário de {nomeMes.format(referencia)}</h2><p className="mt-0.5 text-xs text-foreground-soft">Quando cada compromisso cai no mês</p></div><div className="flex gap-1"><button type="button" onClick={aoMesAnterior} className="icon-action" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-4 rotate-180" /></button><button type="button" onClick={aoProximoMes} className="icon-action" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-4" /></button></div></header>
+      <div className="mt-4 flex items-center justify-end gap-4 text-[.62rem] text-foreground-soft"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error" />Despesa</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-[#eab35c]" />Receita</span></div>
+      <div className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">
+        {diasSemana.map((dia, indice) => <span key={`${dia}-${indice}`} className="py-1 text-center text-[.62rem] font-bold text-foreground-soft">{dia}</span>)}
+        {celulas.map((dia, indice) => {
+          const itens = dia ? eventos.get(dia) ?? [] : [];
+          const atual = dia && hoje.getFullYear() === referencia.getFullYear() && hoje.getMonth() === referencia.getMonth() && hoje.getDate() === dia;
+          return <div key={indice} className={`min-h-14 rounded-xl p-1.5 sm:min-h-20 sm:p-2 ${dia ? atual ? "bg-primary text-white" : "bg-primary/[0.045] text-primary" : "bg-transparent"}`}><span className="text-[.62rem] font-bold sm:text-xs">{dia}</span>{itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <div key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`h-1.5 rounded-full ${item.tipo === "RECEITA" ? "bg-[#eab35c]" : atual ? "bg-[#f2ae99]" : "bg-error"}`} />)}{itens.length > 2 && <span className={`block text-[.5rem] ${atual ? "text-white/65" : "text-foreground-soft"}`}>+{itens.length - 2}</span>}</div>}</div>;
+        })}
       </div>
     </section>
   );
@@ -128,6 +179,7 @@ export default function RecorrenciasView() {
   const [recorrenciaEditada, setRecorrenciaEditada] = useState(null);
   const [recorrenciaExcluida, setRecorrenciaExcluida] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [mesReferencia, setMesReferencia] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12));
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
@@ -135,8 +187,9 @@ export default function RecorrenciasView() {
   const filtradas = useMemo(() => dados.recorrencias.filter((item) => !situacao || item.ativa === (situacao === "ATIVA")), [dados.recorrencias, situacao]);
   const separadas = useMemo(() => ({ DESPESA: filtradas.filter((item) => item.tipo === "DESPESA"), RECEITA: filtradas.filter((item) => item.tipo === "RECEITA") }), [filtradas]);
   const totais = useMemo(() => ({ todas: dados.recorrencias.length, ativas: dados.recorrencias.filter((item) => item.ativa).length, pausadas: dados.recorrencias.filter((item) => !item.ativa).length }), [dados.recorrencias]);
-  const valoresAtivos = useMemo(() => dados.recorrencias.filter((item) => item.ativa).reduce((total, item) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor) }), { RECEITA: 0, DESPESA: 0 }), [dados.recorrencias]);
-  const agenda = useMemo(() => dados.recorrencias.map((item) => ({ item, data: proximaOcorrencia(item) })).filter(({ data }) => data).sort((a, b) => a.data - b.data).slice(0, 4), [dados.recorrencias]);
+  const ocorrenciasMes = useMemo(() => dados.recorrencias.flatMap((item) => ocorrenciasNoMes(item, mesReferencia).map((data) => ({ item, data }))), [dados.recorrencias, mesReferencia]);
+  const eventosCalendario = useMemo(() => ocorrenciasMes.reduce((mapa, { item, data }) => mapa.set(data.getDate(), [...(mapa.get(data.getDate()) ?? []), item]), new Map()), [ocorrenciasMes]);
+  const resumoMes = useMemo(() => ocorrenciasMes.reduce((total, { item, data }) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor), PENDENTE: total.PENDENTE + (item.tipo === "DESPESA" && data >= new Date(new Date().setHours(0, 0, 0, 0)) ? Number(item.valor) : 0) }), { RECEITA: 0, DESPESA: 0, PENDENTE: 0 }), [ocorrenciasMes]);
 
   function abrirCriacao() { setRecorrenciaEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setRecorrenciaEditada(item); setModalAberto(true); }
@@ -155,24 +208,22 @@ export default function RecorrenciasView() {
 
   return (
     <main className="page-shell">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="page-eyebrow">O futuro também entra no planejamento</p><h1 className="page-title">Recorrências</h1><p className="page-description">Acompanhe os compromissos e receitas que se repetem.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="page-title !mt-0">Recorrências</h1><p className="page-description">Contas fixas, assinaturas e entradas que se repetem todo mês.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[.65fr_1.35fr]">
-        <div className="balance-panel relative overflow-hidden rounded-2xl p-5 text-white">
-          <div className="relative z-10"><p className="text-[.65rem] font-bold uppercase tracking-[.13em] text-white/55">Valores ativos cadastrados</p><div className="mt-5 grid grid-cols-2 gap-4"><div><span className="text-[.65rem] text-white/50">A receber</span><strong className="mt-1 block text-lg text-[#9ae4c1]">{moeda.format(valoresAtivos.RECEITA)}</strong></div><div><span className="text-[.65rem] text-white/50">A pagar</span><strong className="mt-1 block text-lg text-[#f2ae99]">{moeda.format(valoresAtivos.DESPESA)}</strong></div></div><p className="mt-5 text-[.65rem] leading-5 text-white/45">Os valores respeitam a frequência individual de cada recorrência.</p></div>
-        </div>
-        <div className="paper-card rounded-2xl p-4 sm:p-5">
-          <div className="flex items-center justify-between"><div><h2 className="text-sm font-extrabold text-primary">Próximas ocorrências</h2><p className="mt-0.5 text-xs text-foreground-soft">Sua agenda financeira mais próxima</p></div><span className="grid size-9 place-items-center rounded-xl bg-secondary/8 text-secondary"><Icone nome="calendario" className="size-4" /></span></div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">{agenda.length ? agenda.map(({ item, data }) => <div key={item.id} className="flex items-center gap-3 rounded-xl bg-primary/[0.035] px-3 py-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-center shadow-sm"><strong className="block text-xs text-primary">{data.getDate()}</strong></span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-primary">{item.descricao}</p><p className="mt-0.5 text-[.62rem] capitalize text-foreground-soft">{dataCurta.format(data)}</p></div><strong className={`text-xs ${item.tipo === "RECEITA" ? "text-positive" : "text-error"}`}>{moeda.format(item.valor)}</strong></div>) : <p className="col-span-2 py-5 text-center text-xs text-foreground-soft">Nenhuma ocorrência ativa prevista.</p>}</div>
-        </div>
+      <section className="mt-6 grid gap-3 md:grid-cols-3">
+        <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Despesas fixas</p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.DESPESA)}</strong><p className="mt-2 text-[.65rem] capitalize text-foreground-soft">{nomeMes.format(mesReferencia)}</p></article>
+        <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Receitas fixas</p><strong className="mt-2 block text-xl text-positive">{moeda.format(resumoMes.RECEITA)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Salários, aportes e outras entradas</p></article>
+        <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Ainda a pagar em <span className="capitalize">{new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(mesReferencia)}</span></p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.PENDENTE)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Ocorrências ativas a partir de hoje</p></article>
       </section>
+
+      <CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} aoMesAnterior={() => setMesReferencia((mes) => new Date(mes.getFullYear(), mes.getMonth() - 1, 1, 12))} aoProximoMes={() => setMesReferencia((mes) => new Date(mes.getFullYear(), mes.getMonth() + 1, 1, 12))} />
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
         <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
         <FiltroSegmentado rotulo="Situação das recorrências" valor={situacao} aoAlterar={setSituacao} opcoes={[{ valor: "", rotulo: `Todas (${totais.todas})` }, { valor: "ATIVA", rotulo: `Ativas (${totais.ativas})` }, { valor: "PAUSADA", rotulo: `Pausadas (${totais.pausadas})` }]} />
       </div>
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
-      <div className="mt-6 grid gap-8 2xl:grid-cols-2">
+      <div className="mt-6 grid gap-5 xl:grid-cols-2">
         <GrupoRecorrencias titulo="Despesas recorrentes" descricao="Compromissos que se repetem" itens={separadas.DESPESA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} aoCriar={abrirCriacao} />
         <GrupoRecorrencias titulo="Receitas recorrentes" descricao="Valores previstos com frequência" itens={separadas.RECEITA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} aoCriar={abrirCriacao} />
       </div>
