@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Icone } from "@/components/icons";
 
 const navegacao = [
@@ -35,6 +36,9 @@ function ItemNavegacao({ item, ativo, mobile = false }) {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const navegacaoPrincipalMobile = navegacao.slice(0, 4);
+  const navegacaoSecundariaMobile = navegacao.slice(4);
 
   return (
     <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.25rem_1fr]">
@@ -54,15 +58,22 @@ export default function AppShell({ children }) {
       </aside>
 
       <div className="min-w-0 pb-20 lg:pb-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-primary/8 bg-background/92 px-5 backdrop-blur-xl lg:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-primary/7 bg-background/88 px-4 backdrop-blur-xl sm:px-5 lg:hidden">
           <Image src="/logomarca/cifra-horizontal-verde.png" alt="Cifra" width={765} height={326} priority className="h-auto w-24" />
-          <span className="grid size-8 place-items-center rounded-full bg-primary text-xs font-extrabold text-white">P</span>
+          <span className="grid size-8 place-items-center rounded-full border border-primary/10 bg-white/65 text-xs font-extrabold text-primary">P</span>
         </header>
         <div key={pathname} className="page-transition">{children}</div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[4.5rem] items-center border-t border-primary/10 bg-white/95 px-1 backdrop-blur lg:hidden" aria-label="Navegação móvel">
-        {navegacao.map((item) => <ItemNavegacao key={item.nome} item={item} ativo={pathname === item.href} mobile />)}
+      {menuMobileAberto && <button type="button" className="fixed inset-0 z-40 bg-primary/25 backdrop-blur-[2px] lg:hidden" onClick={() => setMenuMobileAberto(false)} aria-label="Fechar menu" />}
+      {menuMobileAberto && (
+        <aside className="fixed inset-x-3 bottom-[4.85rem] z-50 rounded-2xl border border-primary/8 bg-white p-2 shadow-[0_18px_55px_rgba(0,58,48,.18)] lg:hidden" aria-label="Mais opções">
+          {navegacaoSecundariaMobile.map((item) => <Link key={item.nome} href={item.href} onClick={() => setMenuMobileAberto(false)} className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold ${pathname === item.href ? "bg-primary text-white" : "text-primary hover:bg-primary/5"}`}><Icone nome={item.icone} className="size-4" />{item.nome}</Link>)}
+        </aside>
+      )}
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[4.5rem] items-center border-t border-primary/8 bg-white/95 px-2 backdrop-blur-xl lg:hidden" aria-label="Navegação móvel">
+        {navegacaoPrincipalMobile.map((item) => <ItemNavegacao key={item.nome} item={item} ativo={pathname === item.href} mobile />)}
+        <button type="button" onClick={() => setMenuMobileAberto((aberto) => !aberto)} className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-2 text-[.58rem] font-semibold ${menuMobileAberto || navegacaoSecundariaMobile.some((item) => item.href === pathname) ? "text-primary" : "text-foreground-soft"}`} aria-expanded={menuMobileAberto}><span className={`grid size-8 place-items-center rounded-xl ${menuMobileAberto || navegacaoSecundariaMobile.some((item) => item.href === pathname) ? "bg-primary text-white" : ""}`}><Icone nome="outros" className="size-4" /></span><span>Mais</span></button>
       </nav>
     </div>
   );
