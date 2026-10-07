@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
+import { botaoPrimario, EsqueletoLista, FeedbackErro } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const tiposConta = [
@@ -344,35 +345,23 @@ export default function ContasView() {
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-primary sm:text-4xl">Minhas contas</h1>
           <p className="mt-2 text-sm text-foreground-soft">Acompanhe onde está seu dinheiro e mantenha os saldos organizados.</p>
         </div>
-        <button type="button" onClick={abrirCriacao} className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(0,58,48,0.16)] transition hover:bg-secondary">
+        <button type="button" onClick={abrirCriacao} className={botaoPrimario}>
           <Icone nome="mais" className="size-4" /> Nova conta
         </button>
       </div>
 
-      <section className="mt-7 grid gap-4 lg:grid-cols-[1.45fr_.55fr]">
-        <div className="balance-panel relative min-h-48 overflow-hidden rounded-[1.75rem] p-6 text-white shadow-[0_18px_50px_rgba(0,58,48,0.16)] sm:p-8">
-          <div className="absolute -right-8 -top-12 size-40 rounded-full bg-secondary/40 blur-2xl" aria-hidden="true" />
-          <div className="relative z-10 flex h-full items-center justify-between gap-6"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-white/60">Saldo consolidado</p><p className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{carregando ? "—" : formatoMoeda.format(saldoTotal)}</p><p className="mt-5 text-xs text-white/55">A soma de tudo que você construiu.</p></div><Image src="/logomarca/simbolo-bau-3d.png" alt="" width={500} height={499} className="hidden h-32 w-auto drop-shadow-[0_15px_16px_rgba(0,0,0,.2)] sm:block" /></div>
-        </div>
-        <div className="gold-surface flex flex-col justify-center rounded-[1.75rem] border border-accent/10 p-6 sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-foreground-soft">Contas cadastradas</p>
-          <p className="mt-3 text-3xl font-extrabold tracking-tight text-primary">{carregando ? "—" : contasAtivas.length}</p>
-          <p className="mt-2 text-xs text-foreground-soft">Organizadas e sempre à mão.</p>
-        </div>
+      <section className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-primary/7 py-4">
+        <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Saldo nas contas</p><p className={`mt-1 text-xl font-extrabold tracking-tight ${saldoTotal < 0 ? "text-error" : "text-primary"}`}>{carregando ? "—" : formatoMoeda.format(saldoTotal)}</p></div>
+        <div className="h-9 w-px bg-primary/8" aria-hidden="true" />
+        <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Ativas</p><p className="mt-1 text-xl font-extrabold text-primary">{carregando ? "—" : contasAtivas.length}</p></div>
+        {contasArquivadas.length > 0 && <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Arquivadas</p><p className="mt-1 text-xl font-extrabold text-primary">{contasArquivadas.length}</p></div>}
       </section>
 
-      {erro && (
-        <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-error/20 bg-error/8 px-5 py-4 text-sm font-semibold text-error" role="alert">
-          <span>{erro}</span>
-          <button type="button" onClick={carregarContas} className="shrink-0 underline underline-offset-4">Tentar novamente</button>
-        </div>
-      )}
+      {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregarContas} />}
 
       <section className="mt-8">
         {carregando ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Carregando contas">
-            {[1, 2, 3].map((item) => <div key={item} className="h-56 animate-pulse rounded-2xl bg-primary/6" />)}
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Carregando contas">{[1, 2, 3].map((item) => <div key={item} className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={2} /></div>)}</div>
         ) : contasAtivas.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {contasAtivas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={solicitarExclusao} />)}
