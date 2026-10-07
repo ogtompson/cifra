@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, ModalPadrao } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const configuracao = {
@@ -61,21 +61,14 @@ function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-primary/45 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
-      <section className="w-full max-w-lg rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-categoria">
-        <div className="flex items-start justify-between gap-4">
-          <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">{categoria ? "Editar" : "Nova"} categoria</p><h2 id="titulo-modal-categoria" className="mt-2 text-2xl font-extrabold tracking-tight text-primary">{categoria ? categoria.nome : "Dê nome aos seus hábitos"}</h2></div>
-          <button type="button" onClick={aoFechar} className="grid size-10 place-items-center rounded-full bg-app-surface text-primary transition hover:bg-primary/10" aria-label="Fechar"><Icone nome="fechar" /></button>
-        </div>
-
-        <form className="mt-7 space-y-5" onSubmit={enviar}>
+    <ModalPadrao eyebrow={`${categoria ? "Editar" : "Nova"} categoria`} titulo={categoria ? categoria.nome : "Dê nome aos seus hábitos"} aoFechar={aoFechar}>
+        <form className="modal-body space-y-5" onSubmit={enviar}>
           <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Nome</span><input name="nome" value={formulario.nome} onChange={(evento) => setFormulario((atual) => ({ ...atual, nome: evento.target.value }))} maxLength={100} required autoFocus placeholder="Ex.: Alimentação" className={campo} /></label>
           <fieldset><legend className="mb-2 text-sm font-bold text-primary">Tipo</legend><div className="operation-switch">{["DESPESA", "RECEITA"].map((tipo) => <label key={tipo} className={`operation-option ${formulario.tipo === tipo ? "is-active" : ""}`}><input type="radio" name="tipo" value={tipo} checked={formulario.tipo === tipo} onChange={(evento) => setFormulario((atual) => ({ ...atual, tipo: evento.target.value }))} className="sr-only" />{configuracao[tipo].singular[0].toUpperCase() + configuracao[tipo].singular.slice(1)}</label>)}</div></fieldset>
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando} className={botaoPrimario}>{salvando ? "Salvando..." : categoria ? "Salvar alterações" : "Criar categoria"}</button></div>
+          <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando} className={botaoPrimario}>{salvando ? "Salvando..." : categoria ? "Salvar alterações" : "Criar categoria"}</button></div>
         </form>
-      </section>
-    </div>
+    </ModalPadrao>
   );
 }
 
@@ -109,6 +102,7 @@ export default function CategoriasView() {
   const [categoriaEditada, setCategoriaEditada] = useState(null);
   const [tipoInicial, setTipoInicial] = useState("DESPESA");
   const [adicionandoSugestao, setAdicionandoSugestao] = useState("");
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const [categoriaExcluida, setCategoriaExcluida] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -153,10 +147,12 @@ export default function CategoriasView() {
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregarCategorias} />}
 
       {!carregando && sugestoesDisponiveis.length > 0 && (
-        <section className="mt-5 rounded-[1.5rem] border border-primary/8 bg-white/55 p-5 sm:p-6">
-          <h2 className="text-base font-extrabold text-primary">Sugestões para começar</h2>
-          <p className="mt-1 text-xs leading-5 text-foreground-soft">Adicione só o que fizer sentido. Você pode editar ou excluir depois.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
+        <section className="mt-5 rounded-2xl border border-primary/8 bg-white/55 px-4 py-3.5">
+          <button type="button" onClick={() => setSugestoesAbertas((abertas) => !abertas)} className="flex w-full items-center justify-between gap-4 text-left" aria-expanded={sugestoesAbertas}>
+            <span><strong className="block text-sm text-primary">Categorias sugeridas</strong><span className="mt-0.5 block text-xs text-foreground-soft">{sugestoesDisponiveis.length} opções prontas para adicionar</span></span>
+            <span className={`grid size-8 place-items-center rounded-full bg-primary/6 text-primary transition-transform ${sugestoesAbertas ? "rotate-45" : ""}`}><Icone nome="mais" className="size-4" /></span>
+          </button>
+          {sugestoesAbertas && <div className="mt-3 flex flex-wrap gap-2 border-t border-primary/7 pt-3">
             {sugestoesDisponiveis.map((sugestao) => {
               const chave = `${sugestao.tipo}:${sugestao.nome}`;
               return (
@@ -167,7 +163,7 @@ export default function CategoriasView() {
                 </button>
               );
             })}
-          </div>
+          </div>}
         </section>
       )}
 
