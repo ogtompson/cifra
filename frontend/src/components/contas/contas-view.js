@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, EsqueletoLista, FeedbackErro } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, EsqueletoLista, FeedbackErro, ModalPadrao } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const tiposConta = [
@@ -61,21 +61,8 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-primary/45 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
-      <section className="w-full max-w-lg rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-conta">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-secondary">{conta ? "Editar" : "Nova"} conta</p>
-            <h2 id="titulo-modal-conta" className="mt-2 text-2xl font-extrabold tracking-tight text-primary">
-              {conta ? conta.nome : "Organize seu dinheiro"}
-            </h2>
-          </div>
-          <button type="button" onClick={aoFechar} className="grid size-10 place-items-center rounded-full bg-app-surface text-primary transition hover:bg-primary/10" aria-label="Fechar">
-            <Icone nome="fechar" />
-          </button>
-        </div>
-
-        <form className="mt-7 space-y-5" onSubmit={enviar}>
+    <ModalPadrao eyebrow={`${conta ? "Editar" : "Nova"} conta`} titulo={conta ? conta.nome : "Organize seu dinheiro"} aoFechar={aoFechar}>
+        <form className="modal-body space-y-5" onSubmit={enviar}>
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-primary">Nome</span>
             <input name="nome" value={formulario.nome} onChange={alterar} maxLength={100} required autoFocus placeholder="Ex.: Conta principal" className={campo} />
@@ -96,15 +83,14 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
 
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
 
-          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+          <div className="modal-footer">
             <button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button>
             <button type="submit" disabled={salvando} className={botaoPrimario}>
               {salvando ? "Salvando..." : conta ? "Salvar alterações" : "Criar conta"}
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </ModalPadrao>
   );
 }
 
@@ -138,18 +124,8 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-primary/45 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
-      <section className="w-full max-w-lg rounded-t-[2rem] bg-white p-6 shadow-2xl sm:rounded-[2rem] sm:p-8" role="dialog" aria-modal="true" aria-labelledby="titulo-exclusao-conta">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-error">Ação permanente</p>
-            <h2 id="titulo-exclusao-conta" className="mt-2 text-2xl font-extrabold tracking-tight text-primary">Excluir {impacto.contaNome}?</h2>
-          </div>
-          <button type="button" onClick={aoFechar} className="grid size-10 place-items-center rounded-full bg-app-surface text-primary transition hover:bg-primary/10" aria-label="Fechar">
-            <Icone nome="fechar" />
-          </button>
-        </div>
-
+    <ModalPadrao eyebrow="Ação permanente" titulo={`Excluir ${impacto.contaNome}?`} aoFechar={aoFechar}>
+      <div className="modal-body">
         {possuiHistorico ? (
           <>
             <p className="mt-5 text-sm leading-6 text-foreground-soft">Esta conta ainda possui informações vinculadas. Arquive-a para preservar o histórico ou confirme abaixo para excluir tudo definitivamente.</p>
@@ -168,19 +144,19 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
 
         {erro && <p className="mt-4 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
 
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button type="button" onClick={aoFechar} className="rounded-xl border border-primary/15 px-5 py-3 text-sm font-bold text-primary transition hover:bg-app-surface">Cancelar</button>
+        <div className="modal-footer">
+          <button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button>
           {possuiHistorico && (
-            <button type="button" onClick={arquivar} disabled={arquivando || excluindo} className="rounded-xl border border-primary/20 px-5 py-3 text-sm font-bold text-primary transition hover:bg-primary/7 disabled:cursor-wait disabled:opacity-45">
+            <button type="button" onClick={arquivar} disabled={arquivando || excluindo} className={botaoSecundario}>
               {arquivando ? "Arquivando..." : "Arquivar conta"}
             </button>
           )}
-          <button type="button" onClick={confirmar} disabled={excluindo || (possuiHistorico && !confirmado)} className="rounded-xl bg-error px-5 py-3 text-sm font-bold text-white transition hover:bg-[#96362d] disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="button" onClick={confirmar} disabled={excluindo || (possuiHistorico && !confirmado)} className="action-danger">
             {excluindo ? "Excluindo..." : possuiHistorico ? "Excluir conta e histórico" : "Excluir conta"}
           </button>
         </div>
-      </section>
-    </div>
+      </div>
+    </ModalPadrao>
   );
 }
 
