@@ -9,6 +9,35 @@ const configuracao = {
   RECEITA: { rotulo: "Receitas", singular: "receita", cor: "positive", descricao: "De onde o seu dinheiro vem" },
 };
 
+const sugestoes = [
+  { nome: "Moradia", tipo: "DESPESA", icone: "casa" },
+  { nome: "Alimentação", tipo: "DESPESA", icone: "alimentacao" },
+  { nome: "Transporte", tipo: "DESPESA", icone: "transporte" },
+  { nome: "Saúde", tipo: "DESPESA", icone: "saude" },
+  { nome: "Educação", tipo: "DESPESA", icone: "educacao" },
+  { nome: "Lazer", tipo: "DESPESA", icone: "lazer" },
+  { nome: "Assinaturas", tipo: "DESPESA", icone: "assinatura" },
+  { nome: "Compras", tipo: "DESPESA", icone: "compras" },
+  { nome: "Salário", tipo: "RECEITA", icone: "salario" },
+  { nome: "Freelance", tipo: "RECEITA", icone: "carteira" },
+  { nome: "Investimentos", tipo: "RECEITA", icone: "investimento" },
+  { nome: "Presentes", tipo: "RECEITA", icone: "presente" },
+];
+
+function normalizar(texto) {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function iconeDaCategoria(nome) {
+  const chave = normalizar(nome);
+  const correspondencia = sugestoes.find((item) => normalizar(item.nome) === chave);
+  if (correspondencia) return correspondencia.icone;
+  if (chave.includes("casa") || chave.includes("aluguel")) return "casa";
+  if (chave.includes("mercado") || chave.includes("restaurante")) return "alimentacao";
+  if (chave.includes("renda") || chave.includes("venda")) return "salario";
+  return "outros";
+}
+
 async function buscarCategorias() {
   return apiFetch("/categorias");
 }
@@ -53,7 +82,7 @@ function ItemCategoria({ categoria, aoEditar, aoExcluir }) {
   const estilo = categoria.tipo === "RECEITA" ? "bg-positive/10 text-positive" : "bg-error/8 text-error";
   return (
     <article className="group grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-primary/7 py-4 last:border-0">
-      <span className={`grid size-11 place-items-center rounded-2xl ${estilo}`}><span className="text-sm font-extrabold">{categoria.nome.slice(0, 1).toUpperCase()}</span></span>
+      <span className={`grid size-11 place-items-center rounded-2xl ${estilo}`}><Icone nome={iconeDaCategoria(categoria.nome)} /></span>
       <div className="min-w-0"><h3 className="truncate text-sm font-extrabold text-primary">{categoria.nome}</h3><p className="mt-0.5 text-xs text-foreground-soft">Categoria de {configuracao[categoria.tipo].singular}</p></div>
       <div className="flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"><button type="button" onClick={() => aoEditar(categoria)} className="grid size-9 place-items-center rounded-lg text-foreground-soft transition hover:bg-secondary/10 hover:text-secondary" aria-label={`Editar ${categoria.nome}`}><Icone nome="editar" className="size-4" /></button><button type="button" onClick={() => aoExcluir(categoria)} className="grid size-9 place-items-center rounded-lg text-foreground-soft transition hover:bg-error/10 hover:text-error" aria-label={`Excluir ${categoria.nome}`}><Icone nome="excluir" className="size-4" /></button></div>
     </article>
@@ -78,6 +107,7 @@ export default function CategoriasView() {
   const [modalAberto, setModalAberto] = useState(false);
   const [categoriaEditada, setCategoriaEditada] = useState(null);
   const [tipoInicial, setTipoInicial] = useState("DESPESA");
+  const [adicionandoSugestao, setAdicionandoSugestao] = useState("");
 
   const carregarCategorias = useCallback(async () => {
     setCarregando(true); setErro("");
@@ -91,11 +121,27 @@ export default function CategoriasView() {
   }, []);
 
   const separadas = useMemo(() => ({ DESPESA: categorias.filter((categoria) => categoria.tipo === "DESPESA"), RECEITA: categorias.filter((categoria) => categoria.tipo === "RECEITA") }), [categorias]);
+  const sugestoesDisponiveis = useMemo(() => {
+    const existentes = new Set(categorias.map((categoria) => `${categoria.tipo}:${normalizar(categoria.nome)}`));
+    return sugestoes.filter((sugestao) => !existentes.has(`${sugestao.tipo}:${normalizar(sugestao.nome)}`));
+  }, [categorias]);
 
   function abrirCriacao(tipo = "DESPESA") { setCategoriaEditada(null); setTipoInicial(tipo); setModalAberto(true); }
   function abrirEdicao(categoria) { setCategoriaEditada(categoria); setTipoInicial(categoria.tipo); setModalAberto(true); }
   async function salvar(dados) { await apiFetch(categoriaEditada ? `/categorias/${categoriaEditada.id}` : "/categorias", { method: categoriaEditada ? "PUT" : "POST", body: JSON.stringify(dados) }); setModalAberto(false); setCategoriaEditada(null); await carregarCategorias(); }
   async function excluir(categoria) { if (!window.confirm(`Excluir a categoria “${categoria.nome}”?`)) return; setErro(""); try { await apiFetch(`/categorias/${categoria.id}`, { method: "DELETE" }); await carregarCategorias(); } catch (error) { setErro(error.message); } }
+  async function adicionarSugestao(sugestao) {
+    setErro("");
+    setAdicionandoSugestao(`${sugestao.tipo}:${sugestao.nome}`);
+    try {
+      await apiFetch("/categorias", { method: "POST", body: JSON.stringify({ nome: sugestao.nome, tipo: sugestao.tipo }) });
+      await carregarCategorias();
+    } catch (error) {
+      setErro(error.message);
+    } finally {
+      setAdicionandoSugestao("");
+    }
+  }
 
   return (
     <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -104,6 +150,25 @@ export default function CategoriasView() {
       <section className="gold-surface relative mt-6 overflow-hidden rounded-2xl border border-accent/10 px-4 py-5 sm:mt-7 sm:rounded-[1.6rem] sm:px-8 sm:py-6"><div className="relative z-10 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="text-[.68rem] font-bold uppercase tracking-[.14em] text-accent sm:text-xs">Seu mapa financeiro</p><p className="mt-1.5 max-w-xl text-base font-extrabold text-primary sm:mt-2 sm:text-xl">Categorias transformam uma lista de gastos em decisões mais claras.</p></div><div className="flex gap-2 sm:gap-3"><div className="rounded-xl bg-white/60 px-3 py-2 text-center sm:rounded-2xl sm:px-4 sm:py-3"><strong className="block text-lg text-primary sm:text-xl">{carregando ? "—" : separadas.DESPESA.length}</strong><span className="text-[.62rem] text-foreground-soft sm:text-[.68rem]">despesas</span></div><div className="rounded-xl bg-white/60 px-3 py-2 text-center sm:rounded-2xl sm:px-4 sm:py-3"><strong className="block text-lg text-primary sm:text-xl">{carregando ? "—" : separadas.RECEITA.length}</strong><span className="text-[.62rem] text-foreground-soft sm:text-[.68rem]">receitas</span></div></div></div></section>
 
       {erro && <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-error/20 bg-error/8 px-5 py-4 text-sm font-semibold text-error" role="alert"><span>{erro}</span><button type="button" onClick={carregarCategorias} className="shrink-0 underline underline-offset-4">Tentar novamente</button></div>}
+
+      {!carregando && sugestoesDisponiveis.length > 0 && (
+        <section className="mt-5 rounded-[1.5rem] border border-primary/8 bg-white/55 p-5 sm:p-6">
+          <h2 className="text-base font-extrabold text-primary">Sugestões para começar</h2>
+          <p className="mt-1 text-xs leading-5 text-foreground-soft">Adicione só o que fizer sentido. Você pode editar ou excluir depois.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {sugestoesDisponiveis.map((sugestao) => {
+              const chave = `${sugestao.tipo}:${sugestao.nome}`;
+              return (
+                <button key={chave} type="button" onClick={() => adicionarSugestao(sugestao)} disabled={adicionandoSugestao === chave} className="flex items-center gap-2 rounded-full border border-primary/10 bg-background px-3.5 py-2 text-xs font-bold text-primary transition hover:-translate-y-0.5 hover:border-secondary/35 hover:bg-secondary/6 disabled:cursor-wait disabled:opacity-55">
+                  <Icone nome={sugestao.icone} className="size-4" />
+                  {adicionandoSugestao === chave ? "Adicionando..." : sugestao.nome}
+                  <Icone nome="mais" className="size-3.5" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="h-96 animate-pulse rounded-[1.6rem] bg-primary/6" />) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={excluir} /></>}</div>
 

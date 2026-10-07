@@ -18,6 +18,18 @@ export function Icone({ nome, className = "size-5" }) {
     setaDireita: <path d="m9 18 6-6-6-6" />,
     busca: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
     filtro: <path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z" />,
+    casa: <><path d="M3 11 12 3l9 8" /><path d="M5 10v11h14V10M9 21v-7h6v7" /></>,
+    alimentacao: <><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 5 4 8h-4" /></>,
+    transporte: <><rect x="3" y="6" width="18" height="11" rx="3" /><path d="m5 12 2-5h10l2 5M7 17v2M17 17v2M7 13h.01M17 13h.01" /></>,
+    saude: <path d="M12 21S4 16 4 9a4 4 0 0 1 7-2.6L12 8l1-1.6A4 4 0 0 1 20 9c0 7-8 12-8 12Z" />,
+    lazer: <><path d="M8 12h8M12 8v8" /><path d="M7 5h10a5 5 0 0 1 4.7 6.7l-1.5 4.2a3 3 0 0 1-5.1 1l-1.2-1.4h-3.8l-1.2 1.4a3 3 0 0 1-5.1-1l-1.5-4.2A5 5 0 0 1 7 5Z" /></>,
+    educacao: <><path d="m3 9 9-5 9 5-9 5-9-5Z" /><path d="M7 12v5c3 2 7 2 10 0v-5M21 9v6" /></>,
+    assinatura: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+    compras: <><path d="M6 8h12l1 13H5L6 8Z" /><path d="M9 9V6a3 3 0 0 1 6 0v3" /></>,
+    salario: <><rect x="3" y="6" width="18" height="14" rx="2" /><path d="M16 10h5v6h-5a3 3 0 0 1 0-6ZM7 3v3" /></>,
+    investimento: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /><path d="m4 6 6-3 6 5 5-5" /></>,
+    presente: <><rect x="3" y="9" width="18" height="12" rx="1" /><path d="M12 9v12M3 13h18M7.5 9C5 9 4 7.5 4.7 6.2 6 4 9.5 6 12 9M16.5 9C19 9 20 7.5 19.3 6.2 18 4 14.5 6 12 9" /></>,
+    outros: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">{caminhos[nome]}</svg>;
 }
