@@ -158,18 +158,41 @@ textarea:focus-visible {
 .feedback-error { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid rgba(180, 67, 55, 0.18); border-radius: var(--radius-md); background: rgba(180, 67, 55, 0.07); padding: 0.9rem 1rem; color: var(--error); font-size: 0.78rem; font-weight: 700; }
 .feedback-error button { flex-shrink: 0; text-decoration: underline; text-underline-offset: 0.22rem; }
 
-.page-transition { animation: page-enter var(--motion-base) ease-out both; }
-.modal-panel,
-[role="dialog"] { animation: modal-enter var(--motion-base) cubic-bezier(.2,.75,.3,1) both; }
+.page-transition { animation: page-enter var(--motion-base) ease-out; }
+.modal-overlay { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 58, 48, 0.38); backdrop-filter: blur(5px); }
+.modal-surface { width: 100%; max-height: min(92dvh, 54rem); overflow-y: auto; overscroll-behavior: contain; border-radius: 1.5rem 1.5rem 0 0; background: var(--white); box-shadow: 0 28px 90px rgba(0, 58, 48, 0.24); animation: modal-enter var(--motion-base) cubic-bezier(.2,.75,.3,1) both; }
+.modal-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; border-bottom: 1px solid rgba(0, 58, 48, 0.065); background: rgba(254, 254, 254, 0.94); padding: 1.35rem 1.35rem 1rem; backdrop-filter: blur(10px); }
+.modal-eyebrow { color: var(--secondary); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
+.modal-title { margin-top: 0.3rem; color: var(--primary); font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; }
+.modal-close { display: grid; width: 2.35rem; height: 2.35rem; flex-shrink: 0; place-items: center; border-radius: 999px; background: var(--app-surface); color: var(--primary); transition: background var(--motion-fast), transform var(--motion-fast); }
+.modal-close:hover { background: rgba(0, 58, 48, 0.08); transform: rotate(4deg); }
+.modal-body { padding: 1.25rem 1.35rem 1.35rem; }
+.modal-footer { display: flex; flex-direction: column-reverse; gap: 0.6rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0, 58, 48, 0.065); }
+
+.cifra-switch { display: inline-flex; align-items: center; gap: 0.55rem; border-radius: 999px; padding: 0.25rem; color: var(--foreground-soft); font-size: 0.68rem; font-weight: 800; outline: none; cursor: pointer; }
+.cifra-switch-track { position: relative; width: 2.25rem; height: 1.25rem; border-radius: 999px; background: rgba(0, 58, 48, 0.18); transition: background var(--motion-fast), box-shadow var(--motion-fast); }
+.cifra-switch-thumb { position: absolute; top: 0.125rem; left: 0.125rem; width: 1rem; height: 1rem; border-radius: 999px; background: var(--white); box-shadow: 0 2px 5px rgba(0, 58, 48, 0.22); transition: transform var(--motion-fast); }
+.cifra-switch[data-selected] .cifra-switch-track { background: var(--positive); }
+.cifra-switch[data-selected] .cifra-switch-thumb { transform: translateX(1rem); }
+.cifra-switch[data-focus-visible] .cifra-switch-track { box-shadow: 0 0 0 4px rgba(0, 100, 99, 0.14); }
+.cifra-switch[data-disabled] { cursor: not-allowed; opacity: 0.45; }
 
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes modal-enter {
   from { opacity: 0; transform: translateY(14px) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (min-width: 640px) {
+  .modal-overlay { align-items: center; padding: 1.5rem; }
+  .modal-surface { border-radius: 1.5rem; }
+  .modal-header { padding: 1.5rem 1.65rem 1.1rem; }
+  .modal-body { padding: 1.4rem 1.65rem 1.65rem; }
+  .modal-footer { flex-direction: row; justify-content: flex-end; }
 }
 
 @media (prefers-reduced-motion: reduce) {

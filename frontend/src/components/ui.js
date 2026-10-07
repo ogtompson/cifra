@@ -1,8 +1,37 @@
+"use client";
+
+import { Dialog, Modal, ModalOverlay, Switch as AriaSwitch } from "react-aria-components";
+import { Icone } from "@/components/icons";
+
 export const campo = "control-field";
 export const botaoPrimario = "action-primary";
 export const botaoSecundario = "action-secondary";
 export const botaoIcone = "icon-action";
 
+export function ModalPadrao({ titulo, eyebrow, aoFechar, children, tamanho = "md" }) {
+  const larguras = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-3xl" };
+  return (
+    <ModalOverlay isOpen isDismissable onOpenChange={(aberto) => !aberto && aoFechar()} className="modal-overlay">
+      <Modal className={`modal-surface ${larguras[tamanho] ?? larguras.md}`}>
+        <Dialog className="outline-none">
+          <header className="modal-header">
+            <div>{eyebrow && <p className="modal-eyebrow">{eyebrow}</p>}<h2 className="modal-title">{titulo}</h2></div>
+            <button type="button" onClick={aoFechar} className="modal-close" aria-label="Fechar"><Icone nome="fechar" /></button>
+          </header>
+          {children}
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+}
+export function Switch({ selecionado, aoAlterar, rotulo, desabilitado = false }) {
+  return (
+    <AriaSwitch isSelected={selecionado} onChange={aoAlterar} isDisabled={desabilitado} className="cifra-switch" aria-label={rotulo}>
+      <span className="cifra-switch-track"><span className="cifra-switch-thumb" /></span>
+      <span className="cifra-switch-label">{selecionado ? "Ativa" : "Pausada"}</span>
+    </AriaSwitch>
+  );
+}
 export function EsqueletoLista({ linhas = 5 }) {
   return (
     <div className="divide-y divide-primary/5" aria-label="Carregando conteúdo" aria-busy="true">
@@ -40,16 +69,14 @@ export function FiltroSegmentado({ opcoes, valor, aoAlterar, rotulo }) {
 
 export function Confirmacao({ titulo, descricao, rotuloConfirmar = "Excluir", confirmando = false, aoCancelar, aoConfirmar }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-primary/35 backdrop-blur-sm sm:items-center sm:p-6" role="presentation">
-      <section className="modal-panel w-full max-w-md rounded-t-[1.5rem] bg-white p-6 shadow-2xl sm:rounded-[1.5rem]" role="alertdialog" aria-modal="true" aria-labelledby="titulo-confirmacao">
-        <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-error">Confirmação</p>
-        <h2 id="titulo-confirmacao" className="mt-2 text-xl font-extrabold text-primary">{titulo}</h2>
-        <p className="mt-3 text-sm leading-6 text-foreground-soft">{descricao}</p>
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <ModalPadrao titulo={titulo} eyebrow="Confirmação" aoFechar={aoCancelar} tamanho="sm">
+      <div className="modal-body">
+        <p className="text-sm leading-6 text-foreground-soft">{descricao}</p>
+        <div className="modal-footer">
           <button type="button" onClick={aoCancelar} className={botaoSecundario}>Cancelar</button>
           <button type="button" onClick={aoConfirmar} disabled={confirmando} className="action-danger">{confirmando ? "Excluindo..." : rotuloConfirmar}</button>
         </div>
-      </section>
-    </div>
+      </div>
+    </ModalPadrao>
   );
 }
