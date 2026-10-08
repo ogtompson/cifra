@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Icone } from "@/components/icons";
 import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, Switch } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
@@ -147,13 +148,14 @@ function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoA
   );
 }
 
-function DetalhesDia({ dia, referencia, itens, alinharDireita, alinharAcima, aoFechar, aoEditar, aoAlternar, aoExcluir }) {
+function DetalhesDia({ dia, referencia, itens, alinharDireita, aoFechar, aoEditar, aoAlternar, aoExcluir }) {
   const data = new Date(referencia.getFullYear(), referencia.getMonth(), dia, 12);
   const dataPorExtenso = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(data);
   const saldo = itens.reduce((total, item) => total + (item.tipo === "RECEITA" ? Number(item.valor) : -Number(item.valor)), 0);
 
   return (
-    <aside className={`absolute z-30 w-[min(19rem,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-primary/10 bg-white shadow-[0_20px_55px_rgba(0,58,48,.2)] ${alinharAcima ? "bottom-[calc(100%+.45rem)]" : "top-[calc(100%+.45rem)]"} ${alinharDireita ? "right-0" : "left-0"}`} aria-label={`Detalhes de ${dataPorExtenso}`}>
+    <Popover placement={alinharDireita ? "bottom end" : "bottom start"} offset={7} containerPadding={16} shouldFlip className="z-50 max-h-[calc(100dvh-2rem)] w-[min(19rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-primary/10 bg-white shadow-[0_20px_55px_rgba(0,58,48,.2)]" aria-label={`Detalhes de ${dataPorExtenso}`}>
+      <Dialog className="outline-none">
       <header className="flex items-center gap-2.5 border-b border-primary/7 px-3 py-2.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/[0.08] text-xs font-extrabold text-primary">{String(dia).padStart(2, "0")}</span>
         <div className="min-w-0 flex-1"><h3 className="text-xs font-extrabold text-primary">{dataPorExtenso}</h3><p className="mt-0.5 text-[.58rem] text-foreground-soft">{itens.length} compromisso{itens.length === 1 ? "" : "s"} previsto{itens.length === 1 ? "" : "s"}</p></div>
@@ -175,7 +177,8 @@ function DetalhesDia({ dia, referencia, itens, alinharDireita, alinharAcima, aoF
       })}</div> : <p className="px-4 py-6 text-center text-xs text-foreground-soft">Nenhum compromisso previsto para este dia.</p>}
 
       <footer className="flex items-center justify-between border-t border-primary/7 bg-primary/[0.025] px-3 py-2.5"><span className="text-[.6rem] text-foreground-soft">Saldo previsto do dia</span><strong className={`text-[.68rem] ${saldo > 0 ? "text-positive" : "text-primary"}`}>{saldo > 0 ? "+" : saldo < 0 ? "−" : ""} {moeda.format(Math.abs(saldo))}</strong></footer>
-    </aside>
+      </Dialog>
+    </Popover>
   );
 }
 
@@ -198,15 +201,14 @@ function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecio
           const selecionado = dia === diaSelecionado;
           if (!dia) return <span key={indice} aria-hidden="true" />;
           const alinharDireita = indice % 7 >= 4;
-          const alinharAcima = Math.floor(indice / 7) >= 4;
           return (
-            <div key={indice} className="relative">
-              <button type="button" onClick={() => aoSelecionarDia(selecionado ? null : dia)} className={`h-full min-h-16 w-full overflow-hidden rounded-xl border p-1.5 text-left transition sm:min-h-24 sm:p-2 ${selecionado ? "border-primary bg-primary/[0.09] shadow-[inset_0_0_0_1px_rgba(0,58,48,.18)]" : atual ? "border-secondary/35 bg-secondary/[0.07]" : "border-transparent bg-primary/[0.045] hover:border-primary/15 hover:bg-primary/[0.065]"}`} aria-expanded={selecionado} aria-label={`Dia ${dia}${itens.length ? `, ${itens.length} compromisso${itens.length > 1 ? "s" : ""}` : ", sem compromissos"}`}>
-                <span className="text-[.62rem] font-extrabold text-primary sm:text-xs">{dia}</span>
+            <DialogTrigger key={indice} isOpen={selecionado} onOpenChange={(aberto) => aoSelecionarDia(aberto ? dia : null)}>
+              <Button className={`h-full min-h-16 w-full overflow-hidden rounded-xl border p-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-secondary/45 sm:min-h-24 sm:p-2 ${atual ? `border-primary bg-primary text-white shadow-[0_8px_20px_rgba(0,58,48,.22)] ${selecionado ? "ring-2 ring-secondary/45" : "hover:bg-primary/95"}` : selecionado ? "border-primary bg-primary/[0.09] shadow-[inset_0_0_0_1px_rgba(0,58,48,.18)]" : "border-transparent bg-primary/[0.045] hover:border-primary/15 hover:bg-primary/[0.065]"}`} aria-label={`Dia ${dia}${itens.length ? `, ${itens.length} compromisso${itens.length > 1 ? "s" : ""}` : ", sem compromissos"}`}>
+                <span className={`text-[.62rem] font-extrabold sm:text-xs ${atual ? "text-white" : "text-primary"}`}>{dia}</span>
                 {itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <span key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`block truncate rounded-sm bg-white px-1 py-0.5 text-[.48rem] font-semibold shadow-[0_1px_3px_rgba(0,58,48,.08)] sm:text-[.58rem] ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}><span className="sm:hidden">{item.descricao}</span><span className="hidden sm:inline">{item.descricao} · {moeda.format(item.valor)}</span></span>)}{itens.length > 2 && <span className="block px-1 text-[.5rem] font-bold text-foreground-soft">+{itens.length - 2} compromissos</span>}</div>}
-              </button>
-              {selecionado && <DetalhesDia dia={dia} referencia={referencia} itens={itens} alinharDireita={alinharDireita} alinharAcima={alinharAcima} aoFechar={() => aoSelecionarDia(null)} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />}
-            </div>
+              </Button>
+              <DetalhesDia dia={dia} referencia={referencia} itens={itens} alinharDireita={alinharDireita} aoFechar={() => aoSelecionarDia(null)} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />
+            </DialogTrigger>
           );
         })}
       </div>
