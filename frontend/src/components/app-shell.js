@@ -26,9 +26,9 @@ function ItemNavegacao({ item, ativo, mobile = false }) {
   }
 
   return (
-    <Link href={item.href} title={item.nome} className={`relative flex h-11 items-center gap-3 overflow-hidden rounded-xl px-[0.95rem] text-sm font-semibold transition-colors duration-200 ${ativo ? "bg-white/11 text-white" : "text-white/55 hover:bg-white/6 hover:text-white"}`}>
-      {ativo && <span className="absolute -left-3 h-5 w-0.5 rounded-r-full bg-[#dfb76e] group-hover/sidebar:-left-4" />}
-      <Icone nome={item.icone} className="size-[1.1rem] shrink-0" />
+    <Link href={item.href} title={item.nome} className={`group/item relative flex h-12 items-center gap-3 overflow-hidden rounded-xl px-3.5 text-sm font-semibold transition-colors duration-200 ${ativo ? "bg-white/[0.09] text-white" : "text-white/55 hover:bg-white/[0.055] hover:text-white"}`}>
+      {ativo && <span className="absolute -left-4 h-6 w-0.5 rounded-r-full bg-[#dfb76e]" />}
+      <span className={`grid size-8 shrink-0 place-items-center rounded-lg transition-colors ${ativo ? "bg-white/10 text-[#f0cf91]" : "group-hover/item:bg-white/5"}`}><Icone nome={item.icone} className="size-[1.18rem]" /></span>
       <span className="whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">{item.nome}</span>
     </Link>
   );
@@ -41,17 +41,17 @@ export default function AppShell({ children }) {
   const navegacaoSecundariaMobile = navegacao.slice(4);
 
   return (
-    <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.25rem_1fr]">
-      <aside className="sidebar group/sidebar sticky top-0 z-40 hidden h-screen w-[5.25rem] flex-col overflow-hidden px-4 py-6 transition-[width] duration-300 ease-out hover:w-[14.5rem] focus-within:w-[14.5rem] lg:flex">
-        <div className="relative h-10 shrink-0">
-          <Image src="/logomarca/simbolo-bau-preenchido.svg" alt="Cifra" width={1046} height={943} priority className="absolute left-1 top-0 h-9 w-9 object-contain opacity-100 transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
-          <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="absolute left-1 top-1 h-auto w-24 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100" />
+    <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.75rem_1fr]">
+      <aside className="sidebar group/sidebar sticky top-0 z-40 hidden h-screen w-[5.75rem] flex-col overflow-hidden px-4 py-6 transition-[width] duration-300 ease-out hover:w-[15.5rem] focus-within:w-[15.5rem] lg:flex">
+        <div className="relative h-11 shrink-0">
+          <Image src="/logomarca/simbolo-bau-3d.png" alt="Cifra" width={500} height={499} priority className="absolute left-2 top-0 h-11 w-11 object-contain opacity-100 drop-shadow-[0_5px_10px_rgba(0,0,0,.16)] transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
+          <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="absolute left-2 top-1.5 h-auto w-28 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100" />
         </div>
         <p className="mb-3 mt-8 whitespace-nowrap px-3 text-[.62rem] font-bold uppercase tracking-[.18em] text-white/30 opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">Menu</p>
         <nav className="flex flex-col gap-1" aria-label="Navegação principal">
           {navegacao.map((item) => <ItemNavegacao key={item.nome} item={item} ativo={pathname === item.href} />)}
         </nav>
-        <div className="mt-auto flex items-center gap-3 border-t border-white/8 px-2 pt-5">
+        <div className="mt-auto flex items-center gap-3 border-t border-white/8 px-3 pt-5">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-xs font-extrabold text-white">P</span>
           <div className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100"><p className="text-xs font-bold text-white/80">Paulo</p><p className="mt-0.5 text-[.65rem] text-white/35">Perfil pessoal</p></div>
         </div>
