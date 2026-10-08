@@ -176,6 +176,11 @@ textarea:focus-visible {
 .cifra-switch[data-selected] .cifra-switch-thumb { transform: translateX(1rem); }
 .cifra-switch[data-focus-visible] .cifra-switch-track { box-shadow: 0 0 0 4px rgba(0, 100, 99, 0.14); }
 .cifra-switch[data-disabled] { cursor: not-allowed; opacity: 0.45; }
+.cifra-switch.is-compact { gap: 0.38rem; border: 1px solid rgba(0, 58, 48, 0.11); background: var(--white); padding: 0.22rem 0.48rem 0.22rem 0.25rem; font-size: 0.58rem; line-height: 1; transition: border-color var(--motion-fast), background var(--motion-fast); }
+.cifra-switch.is-compact:hover { border-color: rgba(0, 58, 48, 0.22); background: rgba(0, 58, 48, 0.025); }
+.cifra-switch.is-compact .cifra-switch-track { width: 1.7rem; height: 0.95rem; }
+.cifra-switch.is-compact .cifra-switch-thumb { top: 0.1rem; left: 0.1rem; width: 0.75rem; height: 0.75rem; }
+.cifra-switch.is-compact[data-selected] .cifra-switch-thumb { transform: translateX(0.75rem); }
 
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(5px); }

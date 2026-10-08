@@ -121,11 +121,11 @@ function LinhaRecorrencia({ item, aoEditar, aoAlternar, aoExcluir }) {
   const proxima = proximaOcorrencia(item);
   const receita = item.tipo === "RECEITA";
   return (
-    <article className="group flex items-center gap-3 border-b border-primary/6 px-4 py-3.5 transition-colors last:border-0 hover:bg-secondary/[0.025] sm:px-5">
-      <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${receita ? "bg-positive/10 text-positive" : "bg-error/8 text-error"}`}><Icone nome={receita ? "setaCima" : "setaBaixo"} className="size-4" /></span>
+    <article className={`group flex items-center gap-3 border-b border-primary/6 px-4 py-3 transition-colors last:border-0 hover:bg-secondary/[0.025] sm:px-5 ${item.ativa ? "" : "opacity-55"}`}>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/[0.055] text-[.65rem] font-extrabold text-primary">{proxima ? String(proxima.getDate()).padStart(2, "0") : "—"}</span>
       <div className="min-w-0 flex-1"><h3 className="truncate text-sm font-extrabold text-primary">{item.descricao}</h3><p className="mt-0.5 truncate text-[.68rem] text-foreground-soft">{item.categoriaNome} · {frequencias[item.frequencia]} · {proxima ? dataCurta.format(proxima) : item.ativa ? "ciclo encerrado" : "pausada"}</p></div>
-      <strong className={`hidden whitespace-nowrap text-xs sm:block ${receita ? "text-positive" : "text-error"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong>
-      <Switch selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} />
+      <strong className={`hidden whitespace-nowrap text-xs sm:block ${receita ? "text-positive" : "text-primary"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong>
+      <Switch compacto selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} />
       <div className="flex items-center gap-0.5"><button type="button" onClick={() => aoEditar(item)} className="icon-action" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button></div>
     </article>
   );
@@ -144,6 +144,38 @@ function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoA
         )}
       </div>
     </section>
+  );
+}
+
+function DetalhesDia({ dia, referencia, itens, alinharDireita, alinharAcima, aoFechar, aoEditar, aoAlternar, aoExcluir }) {
+  const data = new Date(referencia.getFullYear(), referencia.getMonth(), dia, 12);
+  const dataPorExtenso = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(data);
+  const saldo = itens.reduce((total, item) => total + (item.tipo === "RECEITA" ? Number(item.valor) : -Number(item.valor)), 0);
+
+  return (
+    <aside className={`absolute z-30 w-[min(19rem,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-primary/10 bg-white shadow-[0_20px_55px_rgba(0,58,48,.2)] ${alinharAcima ? "bottom-[calc(100%+.45rem)]" : "top-[calc(100%+.45rem)]"} ${alinharDireita ? "right-0" : "left-0"}`} aria-label={`Detalhes de ${dataPorExtenso}`}>
+      <header className="flex items-center gap-2.5 border-b border-primary/7 px-3 py-2.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/[0.08] text-xs font-extrabold text-primary">{String(dia).padStart(2, "0")}</span>
+        <div className="min-w-0 flex-1"><h3 className="text-xs font-extrabold text-primary">{dataPorExtenso}</h3><p className="mt-0.5 text-[.58rem] text-foreground-soft">{itens.length} compromisso{itens.length === 1 ? "" : "s"} previsto{itens.length === 1 ? "" : "s"}</p></div>
+        <button type="button" onClick={aoFechar} className="icon-action !size-8" aria-label="Fechar detalhes"><Icone nome="fechar" className="size-3.5" /></button>
+      </header>
+
+      {itens.length ? <div>{itens.map((item) => {
+        const receita = item.tipo === "RECEITA";
+        return (
+          <article key={item.id} className="border-b border-primary/7 px-3 py-2.5 last:border-0">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1"><p className="truncate text-xs font-extrabold text-primary">{item.descricao}</p><p className="mt-0.5 truncate text-[.58rem] text-foreground-soft">{item.categoriaNome} · {item.contaNome}</p></div>
+              <button type="button" onClick={() => aoEditar(item)} className="icon-action !size-8" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button>
+              <button type="button" onClick={() => aoExcluir(item)} className="icon-action !size-8 hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3"><strong className={`text-[.68rem] ${receita ? "text-positive" : "text-primary"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong><Switch compacto selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} /></div>
+          </article>
+        );
+      })}</div> : <p className="px-4 py-6 text-center text-xs text-foreground-soft">Nenhum compromisso previsto para este dia.</p>}
+
+      <footer className="flex items-center justify-between border-t border-primary/7 bg-primary/[0.025] px-3 py-2.5"><span className="text-[.6rem] text-foreground-soft">Saldo previsto do dia</span><strong className={`text-[.68rem] ${saldo > 0 ? "text-positive" : "text-primary"}`}>{saldo > 0 ? "+" : saldo < 0 ? "−" : ""} {moeda.format(Math.abs(saldo))}</strong></footer>
+    </aside>
   );
 }
 
@@ -167,7 +199,15 @@ function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecio
           if (!dia) return <span key={indice} aria-hidden="true" />;
           const alinharDireita = indice % 7 >= 4;
           const alinharAcima = Math.floor(indice / 7) >= 4;
-          return <div key={indice} className="relative"><button type="button" onClick={() => aoSelecionarDia(selecionado ? null : dia)} className={`h-full min-h-16 w-full overflow-hidden rounded-xl border p-1.5 text-left transition sm:min-h-24 sm:p-2 ${selecionado ? "border-primary bg-primary/[0.09] shadow-[inset_0_0_0_1px_rgba(0,58,48,.18)]" : atual ? "border-secondary/35 bg-secondary/[0.07]" : "border-transparent bg-primary/[0.045] hover:border-primary/15 hover:bg-primary/[0.065]"}`} aria-expanded={selecionado} aria-label={`Dia ${dia}${itens.length ? `, ${itens.length} compromisso${itens.length > 1 ? "s" : ""}` : ", sem compromissos"}`}><span className="text-[.62rem] font-extrabold text-primary sm:text-xs">{dia}</span>{itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <span key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`block truncate rounded-sm bg-white px-1 py-0.5 text-[.48rem] font-semibold shadow-[0_1px_3px_rgba(0,58,48,.08)] sm:text-[.58rem] ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}><span className="sm:hidden">{item.descricao}</span><span className="hidden sm:inline">{item.descricao} · {moeda.format(item.valor)}</span></span>)}{itens.length > 2 && <span className="block px-1 text-[.5rem] font-bold text-foreground-soft">+{itens.length - 2} compromissos</span>}</div>}</button>{selecionado && <div className={`absolute z-30 w-[min(21rem,calc(100vw-3rem))] rounded-2xl border border-primary/10 bg-white p-3.5 shadow-[0_20px_55px_rgba(0,58,48,.2)] ${alinharAcima ? "bottom-[calc(100%+.45rem)]" : "top-[calc(100%+.45rem)]"} ${alinharDireita ? "right-0" : "left-0"}`}><header className="flex items-center justify-between gap-3 border-b border-primary/7 pb-2.5"><div><h3 className="text-sm font-extrabold text-primary">Dia {dia}</h3><p className="mt-0.5 text-[.62rem] capitalize text-foreground-soft">{nomeMes.format(referencia)}</p></div><button type="button" onClick={() => aoSelecionarDia(null)} className="icon-action" aria-label="Fechar detalhes"><Icone nome="fechar" className="size-4" /></button></header>{itens.length ? <div className="mt-2 space-y-2">{itens.map((item) => <article key={item.id} className="rounded-xl bg-primary/[0.035] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-extrabold text-primary">{item.descricao}</p><p className="mt-0.5 truncate text-[.6rem] text-foreground-soft">{item.categoriaNome} · {item.contaNome} · {frequencias[item.frequencia]}</p></div><strong className={`whitespace-nowrap text-xs ${item.tipo === "RECEITA" ? "text-positive" : "text-error"}`}>{item.tipo === "RECEITA" ? "+" : "−"} {moeda.format(item.valor)}</strong></div><div className="mt-2 flex items-center justify-between border-t border-primary/6 pt-2"><Switch selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} /><div className="flex"><button type="button" onClick={() => aoEditar(item)} className="icon-action" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button></div></div></article>)}</div> : <p className="py-5 text-center text-xs text-foreground-soft">Nenhum compromisso previsto para este dia.</p>}</div>}</div>;
+          return (
+            <div key={indice} className="relative">
+              <button type="button" onClick={() => aoSelecionarDia(selecionado ? null : dia)} className={`h-full min-h-16 w-full overflow-hidden rounded-xl border p-1.5 text-left transition sm:min-h-24 sm:p-2 ${selecionado ? "border-primary bg-primary/[0.09] shadow-[inset_0_0_0_1px_rgba(0,58,48,.18)]" : atual ? "border-secondary/35 bg-secondary/[0.07]" : "border-transparent bg-primary/[0.045] hover:border-primary/15 hover:bg-primary/[0.065]"}`} aria-expanded={selecionado} aria-label={`Dia ${dia}${itens.length ? `, ${itens.length} compromisso${itens.length > 1 ? "s" : ""}` : ", sem compromissos"}`}>
+                <span className="text-[.62rem] font-extrabold text-primary sm:text-xs">{dia}</span>
+                {itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <span key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`block truncate rounded-sm bg-white px-1 py-0.5 text-[.48rem] font-semibold shadow-[0_1px_3px_rgba(0,58,48,.08)] sm:text-[.58rem] ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}><span className="sm:hidden">{item.descricao}</span><span className="hidden sm:inline">{item.descricao} · {moeda.format(item.valor)}</span></span>)}{itens.length > 2 && <span className="block px-1 text-[.5rem] font-bold text-foreground-soft">+{itens.length - 2} compromissos</span>}</div>}
+              </button>
+              {selecionado && <DetalhesDia dia={dia} referencia={referencia} itens={itens} alinharDireita={alinharDireita} alinharAcima={alinharAcima} aoFechar={() => aoSelecionarDia(null)} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />}
+            </div>
+          );
         })}
       </div>
       <p className="mt-3 text-[.6rem] leading-5 text-foreground-soft">Dias 29, 30 e 31 são ajustados para o último dia em meses mais curtos. Recorrências pausadas não aparecem no calendário.</p>

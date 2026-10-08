@@ -24,9 +24,9 @@ export function ModalPadrao({ titulo, eyebrow, aoFechar, children, tamanho = "md
     </ModalOverlay>
   );
 }
-export function Switch({ selecionado, aoAlterar, rotulo, desabilitado = false }) {
+export function Switch({ selecionado, aoAlterar, rotulo, desabilitado = false, compacto = false }) {
   return (
-    <AriaSwitch isSelected={selecionado} onChange={aoAlterar} isDisabled={desabilitado} className="cifra-switch" aria-label={rotulo}>
+    <AriaSwitch isSelected={selecionado} onChange={aoAlterar} isDisabled={desabilitado} className={`cifra-switch ${compacto ? "is-compact" : ""}`} aria-label={rotulo}>
       <span className="cifra-switch-track"><span className="cifra-switch-thumb" /></span>
       <span className="cifra-switch-label">{selecionado ? "Ativa" : "Pausada"}</span>
     </AriaSwitch>
