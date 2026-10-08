@@ -147,7 +147,7 @@ function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoA
   );
 }
 
-function CalendarioRecorrencias({ referencia, eventos, aoMesAnterior, aoProximoMes }) {
+function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecionarDia, aoMesAnterior, aoProximoMes }) {
   const hoje = new Date();
   const diasNoMes = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0).getDate();
   const primeiroDia = new Date(referencia.getFullYear(), referencia.getMonth(), 1).getDay();
@@ -163,9 +163,21 @@ function CalendarioRecorrencias({ referencia, eventos, aoMesAnterior, aoProximoM
         {celulas.map((dia, indice) => {
           const itens = dia ? eventos.get(dia) ?? [] : [];
           const atual = dia && hoje.getFullYear() === referencia.getFullYear() && hoje.getMonth() === referencia.getMonth() && hoje.getDate() === dia;
-          return <div key={indice} className={`min-h-14 rounded-xl p-1.5 sm:min-h-20 sm:p-2 ${dia ? atual ? "bg-primary text-white" : "bg-primary/[0.045] text-primary" : "bg-transparent"}`}><span className="text-[.62rem] font-bold sm:text-xs">{dia}</span>{itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <div key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`h-1.5 rounded-full ${item.tipo === "RECEITA" ? "bg-[#eab35c]" : atual ? "bg-[#f2ae99]" : "bg-error"}`} />)}{itens.length > 2 && <span className={`block text-[.5rem] ${atual ? "text-white/65" : "text-foreground-soft"}`}>+{itens.length - 2}</span>}</div>}</div>;
+          const selecionado = dia === diaSelecionado;
+          if (!dia) return <span key={indice} aria-hidden="true" />;
+          return <button type="button" key={indice} onClick={() => aoSelecionarDia(dia)} className={`min-h-16 overflow-hidden rounded-xl border p-1.5 text-left transition sm:min-h-24 sm:p-2 ${selecionado ? "border-primary bg-primary/[0.09] shadow-[inset_0_0_0_1px_rgba(0,58,48,.18)]" : atual ? "border-secondary/35 bg-secondary/[0.07]" : "border-transparent bg-primary/[0.045] hover:border-primary/15 hover:bg-primary/[0.065]"}`} aria-label={`Dia ${dia}${itens.length ? `, ${itens.length} compromisso${itens.length > 1 ? "s" : ""}` : ", sem compromissos"}`}><span className="text-[.62rem] font-extrabold text-primary sm:text-xs">{dia}</span>{itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <span key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`block truncate rounded-sm bg-white px-1 py-0.5 text-[.48rem] font-semibold shadow-[0_1px_3px_rgba(0,58,48,.08)] sm:text-[.58rem] ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}><span className="sm:hidden">{item.descricao}</span><span className="hidden sm:inline">{item.descricao} · {moeda.format(item.valor)}</span></span>)}{itens.length > 2 && <span className="block px-1 text-[.5rem] font-bold text-foreground-soft">+{itens.length - 2} compromissos</span>}</div>}</button>;
         })}
       </div>
+      <p className="mt-3 text-[.6rem] leading-5 text-foreground-soft">Dias 29, 30 e 31 são ajustados para o último dia em meses mais curtos. Recorrências pausadas não aparecem no calendário.</p>
+    </section>
+  );
+}
+
+function CompromissosDia({ dia, referencia, itens, aoEditar, aoAlternar, aoExcluir }) {
+  return (
+    <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">
+      <header className="flex items-center justify-between border-b border-primary/7 px-4 py-3.5 sm:px-5"><div><h2 className="text-sm font-extrabold text-primary">Compromissos do dia {dia}</h2><p className="mt-0.5 text-[.65rem] capitalize text-foreground-soft">{nomeMes.format(referencia)}</p></div><span className="rounded-full bg-primary/6 px-2.5 py-1 text-[.65rem] font-extrabold text-primary">{itens.length}</span></header>
+      {itens.length ? itens.map((item) => <LinhaRecorrencia key={item.id} item={item} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />) : <div className="px-5 py-8 text-center"><p className="text-sm font-bold text-primary">Nenhum compromisso previsto</p><p className="mt-1 text-xs text-foreground-soft">Selecione outro dia ou cadastre uma nova recorrência.</p></div>}
     </section>
   );
 }
@@ -180,6 +192,7 @@ export default function RecorrenciasView() {
   const [recorrenciaExcluida, setRecorrenciaExcluida] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
   const [mesReferencia, setMesReferencia] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12));
+  const [diaSelecionado, setDiaSelecionado] = useState(() => new Date().getDate());
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
@@ -189,10 +202,12 @@ export default function RecorrenciasView() {
   const totais = useMemo(() => ({ todas: dados.recorrencias.length, ativas: dados.recorrencias.filter((item) => item.ativa).length, pausadas: dados.recorrencias.filter((item) => !item.ativa).length }), [dados.recorrencias]);
   const ocorrenciasMes = useMemo(() => dados.recorrencias.flatMap((item) => ocorrenciasNoMes(item, mesReferencia).map((data) => ({ item, data }))), [dados.recorrencias, mesReferencia]);
   const eventosCalendario = useMemo(() => ocorrenciasMes.reduce((mapa, { item, data }) => mapa.set(data.getDate(), [...(mapa.get(data.getDate()) ?? []), item]), new Map()), [ocorrenciasMes]);
+  const compromissosSelecionados = eventosCalendario.get(diaSelecionado) ?? [];
   const resumoMes = useMemo(() => ocorrenciasMes.reduce((total, { item, data }) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor), PENDENTE: total.PENDENTE + (item.tipo === "DESPESA" && data >= new Date(new Date().setHours(0, 0, 0, 0)) ? Number(item.valor) : 0) }), { RECEITA: 0, DESPESA: 0, PENDENTE: 0 }), [ocorrenciasMes]);
 
   function abrirCriacao() { setRecorrenciaEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setRecorrenciaEditada(item); setModalAberto(true); }
+  function mudarMes(deslocamento) { setMesReferencia((mes) => new Date(mes.getFullYear(), mes.getMonth() + deslocamento, 1, 12)); setDiaSelecionado(1); }
   async function salvar(payload) { await apiFetch(recorrenciaEditada ? `/recorrencias/${recorrenciaEditada.id}` : "/recorrencias", { method: recorrenciaEditada ? "PUT" : "POST", body: JSON.stringify(payload) }); setModalAberto(false); setRecorrenciaEditada(null); await carregar(); }
   async function alternarSituacao(item) {
     setErro("");
@@ -216,7 +231,8 @@ export default function RecorrenciasView() {
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Ainda a pagar em <span className="capitalize">{new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(mesReferencia)}</span></p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.PENDENTE)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Ocorrências ativas a partir de hoje</p></article>
       </section>
 
-      <CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} aoMesAnterior={() => setMesReferencia((mes) => new Date(mes.getFullYear(), mes.getMonth() - 1, 1, 12))} aoProximoMes={() => setMesReferencia((mes) => new Date(mes.getFullYear(), mes.getMonth() + 1, 1, 12))} />
+      <CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoMesAnterior={() => mudarMes(-1)} aoProximoMes={() => mudarMes(1)} />
+      <CompromissosDia dia={diaSelecionado} referencia={mesReferencia} itens={compromissosSelecionados} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} />
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
         <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
