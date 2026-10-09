@@ -45,7 +45,7 @@ export default function AppShell({ children }) {
       <aside className="sidebar group/sidebar sticky top-0 z-40 hidden h-screen w-[5.75rem] flex-col overflow-hidden px-4 py-6 transition-[width] duration-300 ease-out hover:w-[15.5rem] focus-within:w-[15.5rem] lg:flex">
         <div className="relative h-11 shrink-0">
           <Image src="/logomarca/simbolo-bau-3d.png" alt="Cifra" width={500} height={499} priority className="absolute left-2 top-0 h-11 w-11 object-contain opacity-100 drop-shadow-[0_5px_10px_rgba(0,0,0,.16)] transition-opacity group-hover/sidebar:opacity-0 group-focus-within/sidebar:opacity-0" />
-          <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="absolute -left-3.5 -top-6 h-auto w-48 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100" />
+          <Image src="/logomarca/cifra-horizontal-branca.png" alt="Cifra" width={765} height={326} priority className="absolute -left-px -top-2 h-auto w-32 opacity-0 transition-opacity duration-200 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100" />
         </div>
         <nav className="mt-8 flex flex-col gap-1" aria-label="Navegação principal">
           {navegacao.map((item) => <ItemNavegacao key={item.nome} item={item} ativo={pathname === item.href} />)}
