@@ -1,12 +1,32 @@
 "use client";
 
-import { Dialog, Modal, ModalOverlay, Switch as AriaSwitch } from "react-aria-components";
+import { Button as AriaButton, Dialog, ListBox, ListBoxItem, Modal, ModalOverlay, Popover, Select as AriaSelect, SelectValue, Switch as AriaSwitch } from "react-aria-components";
 import { Icone } from "@/components/icons";
 
 export const campo = "control-field";
 export const botaoPrimario = "action-primary";
 export const botaoSecundario = "action-secondary";
 export const botaoIcone = "icon-action";
+
+export function SelectCampo({ valor, aoAlterar, opcoes, rotulo, nome, obrigatorio = false, desabilitado = false, placeholder = "Selecione" }) {
+  const chaveSelecionada = valor === "" || valor === null || valor === undefined ? null : String(valor);
+  return (
+    <AriaSelect selectedKey={chaveSelecionada} onSelectionChange={(chave) => aoAlterar(chave === "__vazio" || chave === null ? "" : String(chave))} name={nome} isRequired={obrigatorio} isDisabled={desabilitado} aria-label={rotulo} placeholder={placeholder} className="select-control">
+      <AriaButton className="select-trigger">
+        <SelectValue className="min-w-0 flex-1 truncate text-left" />
+        <Icone nome="chevronBaixo" className="size-4 shrink-0" />
+      </AriaButton>
+      <Popover placement="bottom start" offset={6} containerPadding={12} className="select-popover">
+        <ListBox className="select-listbox">
+          {[...(obrigatorio ? [] : [{ valor: "", rotulo: placeholder }]), ...opcoes.filter((opcao) => opcao.valor !== "")].map((opcao) => {
+            const id = opcao.valor === "" ? "__vazio" : String(opcao.valor);
+            return <ListBoxItem key={id} id={id} textValue={opcao.rotulo} className={({ isSelected, isFocused }) => `select-option ${isSelected ? "is-selected" : ""} ${isFocused ? "is-focused" : ""}`}>{({ isSelected }) => <><span className="truncate">{opcao.rotulo}</span>{isSelected && <Icone nome="check" className="size-3.5 shrink-0" />}</>}</ListBoxItem>;
+          })}
+        </ListBox>
+      </Popover>
+    </AriaSelect>
+  );
+}
 
 export function ModalPadrao({ titulo, eyebrow, aoFechar, children, tamanho = "md" }) {
   const larguras = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-3xl" };

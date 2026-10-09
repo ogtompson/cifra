@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, EsqueletoLista, FeedbackErro, ModalPadrao } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, EsqueletoLista, FeedbackErro, ModalPadrao, SelectCampo } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const tiposConta = [
@@ -75,9 +75,7 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-bold text-primary">Tipo</span>
-              <select name="tipo" value={formulario.tipo} onChange={alterar} className={campo}>
-                {tiposConta.map((tipo) => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
-              </select>
+              <SelectCampo nome="tipo" valor={formulario.tipo} aoAlterar={(tipo) => setFormulario((atual) => ({ ...atual, tipo }))} opcoes={tiposConta} rotulo="Tipo de conta" placeholder="Tipo de conta" obrigatorio />
             </label>
           </div>
 
