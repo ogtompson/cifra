@@ -1,6 +1,6 @@
 "use client";
 
-import { Button as AriaButton, Dialog, ListBox, ListBoxItem, Modal, ModalOverlay, Popover, Select as AriaSelect, SelectValue, Switch as AriaSwitch } from "react-aria-components";
+import { Button as AriaButton, Dialog, Menu, MenuItem, MenuTrigger, Modal, ModalOverlay, Popover, Switch as AriaSwitch } from "react-aria-components";
 import { Icone } from "@/components/icons";
 
 export const campo = "control-field";
@@ -10,21 +10,27 @@ export const botaoIcone = "icon-action";
 
 export function SelectCampo({ valor, aoAlterar, opcoes, rotulo, nome, obrigatorio = false, desabilitado = false, placeholder = "Selecione" }) {
   const chaveSelecionada = valor === "" || valor === null || valor === undefined ? null : String(valor);
+  const opcoesVisiveis = [...(obrigatorio ? [] : [{ valor: "", rotulo: placeholder }]), ...opcoes.filter((opcao) => opcao.valor !== "")];
+  const textoSelecionado = opcoes.find((opcao) => String(opcao.valor) === chaveSelecionada)?.rotulo ?? placeholder;
   return (
-    <AriaSelect selectedKey={chaveSelecionada} onSelectionChange={(chave) => aoAlterar(chave === "__vazio" || chave === null ? "" : String(chave))} name={nome} isRequired={obrigatorio} isDisabled={desabilitado} aria-label={rotulo} placeholder={placeholder} className="select-control">
-      <AriaButton className="select-trigger">
-        <SelectValue className="min-w-0 flex-1 truncate text-left" />
+    <div className="select-control">
+      {nome && <input type="hidden" name={nome} value={valor ?? ""} />}
+      <MenuTrigger>
+      <AriaButton type="button" isDisabled={desabilitado} className="select-trigger" aria-label={rotulo}>
+        <span className={`min-w-0 flex-1 truncate text-left ${chaveSelecionada ? "" : "text-foreground-soft"}`}>{textoSelecionado}</span>
         <Icone nome="chevronBaixo" className="size-4 shrink-0" />
       </AriaButton>
       <Popover placement="bottom start" offset={6} containerPadding={12} className="select-popover">
-        <ListBox className="select-listbox">
-          {[...(obrigatorio ? [] : [{ valor: "", rotulo: placeholder }]), ...opcoes.filter((opcao) => opcao.valor !== "")].map((opcao) => {
+        <Menu className="select-listbox" aria-label={rotulo} onAction={(chave) => aoAlterar(chave === "__vazio" ? "" : String(chave))}>
+          {opcoesVisiveis.map((opcao) => {
             const id = opcao.valor === "" ? "__vazio" : String(opcao.valor);
-            return <ListBoxItem key={id} id={id} textValue={opcao.rotulo} className={({ isSelected, isFocused }) => `select-option ${isSelected ? "is-selected" : ""} ${isFocused ? "is-focused" : ""}`}>{({ isSelected }) => <><span className="truncate">{opcao.rotulo}</span>{isSelected && <Icone nome="check" className="size-3.5 shrink-0" />}</>}</ListBoxItem>;
+            const selecionada = id === (chaveSelecionada ?? "__vazio");
+            return <MenuItem key={id} id={id} textValue={opcao.rotulo} className={({ isFocused }) => `select-option ${selecionada ? "is-selected" : ""} ${isFocused ? "is-focused" : ""}`}><span className="truncate">{opcao.rotulo}</span>{selecionada && <Icone nome="check" className="size-3.5 shrink-0" />}</MenuItem>;
           })}
-        </ListBox>
+        </Menu>
       </Popover>
-    </AriaSelect>
+      </MenuTrigger>
+    </div>
   );
 }
 

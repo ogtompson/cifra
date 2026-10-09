@@ -118,11 +118,11 @@ textarea:focus-visible {
 .control-field[type="date"] { padding-right: 0.9rem; }
 
 .select-control { width: 100%; min-width: 0; }
-.select-trigger { display: flex; width: 100%; min-height: 2.75rem; align-items: center; gap: 0.75rem; border: 1px solid rgba(0, 58, 48, 0.11); border-radius: 999px; background: rgba(254, 254, 254, 0.72); padding: 0.7rem 1rem 0.7rem 1.1rem; color: var(--foreground); font-size: 0.82rem; outline: none; transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast); }
+.select-trigger { display: flex; width: 100%; min-height: 2.75rem; align-items: center; gap: 0.9rem; border: 1px solid rgba(0, 58, 48, 0.11); border-radius: 999px; background: rgba(254, 254, 254, 0.72); padding: 0.7rem 1.35rem 0.7rem 1.1rem; color: var(--foreground); font-size: 0.82rem; outline: none; transition: border-color var(--motion-fast), background var(--motion-fast), box-shadow var(--motion-fast); }
 .select-trigger:hover { border-color: rgba(0, 58, 48, 0.2); background: var(--white); }
-.select-trigger[data-focus-visible], .select-trigger[data-open] { border-color: rgba(0, 100, 99, 0.6); background: var(--white); box-shadow: 0 0 0 4px rgba(0, 100, 99, 0.08); }
+.select-trigger[data-focus-visible], .select-trigger[aria-expanded="true"] { border-color: rgba(0, 100, 99, 0.6); background: var(--white); box-shadow: 0 0 0 4px rgba(0, 100, 99, 0.08); }
 .select-trigger[data-disabled] { cursor: not-allowed; opacity: 0.5; }
-.select-trigger[data-open] svg { transform: rotate(180deg); }
+.select-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 .select-trigger svg { color: var(--primary); transition: transform var(--motion-fast); }
 .select-popover { z-index: 90; width: var(--trigger-width); max-height: min(18rem, calc(100dvh - 2rem)); overflow-y: auto; border: 1px solid rgba(0, 58, 48, 0.1); border-radius: 1rem; background: rgba(254, 254, 254, 0.98); padding: 0.35rem; box-shadow: 0 18px 45px rgba(0, 58, 48, 0.16); backdrop-filter: blur(12px); outline: none; }
 .select-listbox { display: grid; gap: 0.15rem; outline: none; }
