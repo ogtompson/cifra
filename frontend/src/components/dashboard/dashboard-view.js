@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoSecundario, EsqueletoLista, FeedbackErro, FiltroSegmentado, SelectCampo } from "@/components/ui";
+import { botaoSecundario, EsqueletoLista, FeedbackErro, FiltroSegmentado, NavegacaoMes, SelectCampo } from "@/components/ui";
 import GraficoComparativo from "@/components/ui/grafico-comparativo";
 import { apiFetch } from "@/lib/api";
-import { categoriasDoMes, chaveMes, compromissoFixo, mediasCategorias, mesesAte, previsaoProximoMes, proximasRecorrencias, resumoMes, serieMensal } from "./dashboard-calculos";
+import { categoriasDoMes, chaveMes, compromissoFixo, mediasCategorias, previsaoProximoMes, proximasRecorrencias, resumoMes, serieMensal } from "./dashboard-calculos";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const moedaCompacta = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
@@ -115,7 +115,6 @@ export default function DashboardView() {
   useEffect(() => { let ativo = true; carregarDashboard().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, []);
   useEffect(() => { let ativo = true; apiFetch(`/orcamentos?mesReferencia=${mesReferencia}-01`).then((resultado) => ativo && setOrcamentos(resultado)).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, [mesReferencia]);
 
-  const opcoesMes = useMemo(() => mesesAte(mesAtual, 13).reverse().map((item) => ({ valor: item.chave, rotulo: capitalizarPrimeira(mesLongo.format(item.data)) })), [mesAtual]);
   const categoriasFiltro = useMemo(() => { const mapa = new Map((dados?.transacoes ?? []).map((item) => [String(item.categoriaId), item.categoriaNome])); return [...mapa].sort((a, b) => a[1].localeCompare(b[1], "pt-BR")).map(([valor, rotulo]) => ({ valor, rotulo })); }, [dados]);
   const analise = useMemo(() => dados ? resumoMes({ ...dados, chave: mesReferencia, contaId, categoriaId, taxaMeta: Number(taxaMeta), hoje: agora }) : null, [dados, mesReferencia, contaId, categoriaId, taxaMeta, agora]);
   const serie = useMemo(() => dados ? serieMensal({ ...dados, chaveFinal: mesReferencia, quantidade: Number(periodo), contaId, categoriaId }) : [], [dados, mesReferencia, periodo, contaId, categoriaId]);
@@ -129,21 +128,22 @@ export default function DashboardView() {
   const resumoOrcamentos = orcamentosFiltrados.reduce((total, item) => ({ limite: total.limite + Number(item.valorLimite), gasto: total.gasto + Number(item.gastoRealizado) }), { limite: 0, gasto: 0 });
   const orcamentosEstourados = orcamentosFiltrados.filter((item) => item.status === "ESTOURADO");
   const filtrosAtivos = Boolean(contaId || categoriaId || mesReferencia !== mesAtual);
-  const referencia = opcoesMes.find((item) => item.valor === mesReferencia)?.rotulo ?? mesReferencia;
+  const [anoReferencia, numeroMesReferencia] = mesReferencia.split("-").map(Number);
+  const dataReferencia = new Date(anoReferencia, numeroMesReferencia - 1, 1, 12);
+  const referencia = capitalizarPrimeira(mesLongo.format(dataReferencia));
 
   function selecionarCategoria(id) { setCategoriaId((atual) => String(atual) === String(id) ? "" : String(id)); }
   function limparFiltros() { setContaId(""); setCategoriaId(""); setMesReferencia(mesAtual); }
   function moverMes(deslocamento) {
     const [ano, mes] = mesReferencia.split("-").map(Number);
-    const destino = chaveMes(new Date(ano, mes - 1 + deslocamento, 1, 12));
-    if (opcoesMes.some((item) => item.valor === destino)) setMesReferencia(destino);
+    setMesReferencia(chaveMes(new Date(ano, mes - 1 + deslocamento, 1, 12)));
   }
 
   if (erro) return <main className="page-shell"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
     <main className="page-shell">
-      <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="page-eyebrow">Inteligência financeira</p><h1 className="page-title">Dashboard</h1><p className="page-description">Seu dinheiro hoje, no fechamento do mês e no próximo ciclo.</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex min-h-11 items-center rounded-full border border-primary/10 bg-white/70 p-1" aria-label="Navegação mensal"><button type="button" onClick={() => moverMes(-1)} disabled={mesReferencia === opcoesMes.at(-1)?.valor} className="grid size-9 place-items-center rounded-full text-primary transition hover:bg-primary/6 disabled:cursor-not-allowed disabled:opacity-25" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-3.5 rotate-180" /></button><span className="min-w-36 px-2 text-center text-xs font-extrabold text-primary">{referencia}</span><button type="button" onClick={() => moverMes(1)} disabled={mesReferencia === mesAtual} className="grid size-9 place-items-center rounded-full text-primary transition hover:bg-primary/6 disabled:cursor-not-allowed disabled:opacity-25" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-3.5" /></button></div><Link href="/transacoes" className={botaoSecundario}>Transações <Icone nome="setaDireita" className="size-3.5" /></Link></div></header>
+      <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><NavegacaoMes referencia={dataReferencia} aoMudar={moverMes} /><h1 className="page-title">Dashboard</h1><p className="page-description">Seu dinheiro hoje, no fechamento do mês e no próximo ciclo.</p></div><Link href="/transacoes" className={`${botaoSecundario} self-start lg:self-auto`}>Transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
 
       <section className="mt-5 rounded-2xl border border-primary/8 bg-white/65 p-3 shadow-[var(--shadow-soft)] backdrop-blur-sm" aria-label="Filtros do dashboard">
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_auto_1fr] xl:items-center"><SelectCampo valor={contaId} aoAlterar={setContaId} opcoes={(dados?.contas ?? []).map((conta) => ({ valor: String(conta.id), rotulo: conta.nome }))} rotulo="Filtrar por conta" placeholder="Todas as contas" /><SelectCampo valor={categoriaId} aoAlterar={setCategoriaId} opcoes={categoriasFiltro} rotulo="Filtrar por categoria" placeholder="Todas as categorias" /><FiltroSegmentado valor={periodo} aoAlterar={setPeriodo} rotulo="Período da tendência" opcoes={[{ valor: "6", rotulo: "6 meses" }, { valor: "12", rotulo: "12 meses" }]} /><SelectCampo valor={taxaMeta} aoAlterar={setTaxaMeta} opcoes={[{ valor: "10", rotulo: "Poupar 10%" }, { valor: "20", rotulo: "Poupar 20%" }, { valor: "30", rotulo: "Poupar 30%" }]} rotulo="Referência de poupança" obrigatorio /></div>
