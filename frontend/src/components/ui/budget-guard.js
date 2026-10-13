@@ -2,12 +2,11 @@
 
 import { Icone } from "@/components/icons";
 
-export default function BudgetGuard({ budgets, label = "Limites por categoria", emptyLabel = "Nenhum limite configurado para este mês.", onSelect, className = "" }) {
+export default function BudgetGuard({ budgets, emptyLabel = "Nenhum limite configurado para este mês.", onSelect, className = "" }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-primary/8 bg-white/55 ${className}`}>
-      <p className="border-b border-primary/7 bg-primary/[.025] px-4 py-2 text-[.62rem] font-extrabold uppercase tracking-[.13em] text-foreground-soft">{label}</p>
+    <div className={className}>
       {budgets.length === 0 ? (
-        <p className="flex items-start gap-2 px-4 py-5 text-xs text-foreground-soft"><Icone nome="grafico" className="mt-px size-4 shrink-0 text-secondary" />{emptyLabel}</p>
+        <p className="flex items-start justify-center gap-2 px-5 py-8 text-center text-xs text-foreground-soft"><Icone nome="grafico" className="mt-px size-4 shrink-0 text-secondary" />{emptyLabel}</p>
       ) : (
         <ul className="divide-y divide-primary/7">
           {budgets.map((budget) => {
@@ -30,7 +29,7 @@ export default function BudgetGuard({ budgets, label = "Limites por categoria", 
                 <div className="mt-1.5 flex items-center justify-between gap-3 text-[.6rem]"><span className="text-foreground-soft">Alerta a partir de 80%</span><span className={saldo >= 0 ? "font-bold text-positive" : "font-bold text-error"}>{saldo >= 0 ? `${budget.format(saldo)} disponíveis` : `${budget.format(Math.abs(saldo))} excedidos`}</span></div>
               </>
             );
-            return <li key={budget.id}>{onSelect ? <button type="button" onClick={() => onSelect(budget)} className="block w-full px-4 py-3 text-left transition hover:bg-secondary/[.035] focus-visible:bg-secondary/[.035] focus-visible:outline-none">{conteudo}</button> : <div className="px-4 py-3">{conteudo}</div>}</li>;
+            return <li key={budget.id}>{onSelect ? <button type="button" onClick={() => onSelect(budget)} className="block w-full px-5 py-4 text-left transition hover:bg-secondary/[.025] focus-visible:bg-secondary/[.035] focus-visible:outline-none sm:px-6">{conteudo}</button> : <div className="px-5 py-4 sm:px-6">{conteudo}</div>}</li>;
           })}
         </ul>
       )}
