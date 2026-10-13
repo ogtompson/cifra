@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, SelectCampo, Switch } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo, Switch } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -182,7 +182,7 @@ function DetalhesDia({ dia, referencia, itens, alinharDireita, aoFechar, aoEdita
   );
 }
 
-function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecionarDia, aoMesAnterior, aoProximoMes, aoEditar, aoAlternar, aoExcluir }) {
+function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecionarDia, aoEditar, aoAlternar, aoExcluir }) {
   const hoje = new Date();
   const diasNoMes = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0).getDate();
   const primeiroDia = new Date(referencia.getFullYear(), referencia.getMonth(), 1).getDay();
@@ -191,7 +191,7 @@ function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecio
 
   return (
     <section className="paper-card mt-5 rounded-[1.5rem] p-4 sm:p-5">
-      <header className="flex items-start justify-between gap-4"><div><h2 className="text-sm font-extrabold capitalize text-primary">Calendário de {nomeMes.format(referencia)}</h2><p className="mt-0.5 text-xs text-foreground-soft">Quando cada compromisso cai no mês</p></div><div className="flex gap-1"><button type="button" onClick={aoMesAnterior} className="icon-action" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-4 rotate-180" /></button><button type="button" onClick={aoProximoMes} className="icon-action" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-4" /></button></div></header>
+      <header><h2 className="text-sm font-extrabold capitalize text-primary">Calendário de {nomeMes.format(referencia)}</h2><p className="mt-0.5 text-xs text-foreground-soft">Quando cada compromisso cai no mês</p></header>
       <div className="mt-4 flex items-center justify-end gap-4 text-[.62rem] text-foreground-soft"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error" />Despesa</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-[#eab35c]" />Receita</span></div>
       <div className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">
         {diasSemana.map((dia, indice) => <span key={`${dia}-${indice}`} className="py-1 text-center text-[.62rem] font-bold text-foreground-soft">{dia}</span>)}
@@ -257,7 +257,7 @@ export default function RecorrenciasView() {
 
   return (
     <main className="page-shell">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="page-title !mt-0">Recorrências</h1><p className="page-description">Contas fixas, assinaturas e entradas que se repetem todo mês.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><NavegacaoMes referencia={mesReferencia} aoMudar={mudarMes} /><h1 className="page-title">Recorrências</h1><p className="page-description">Contas fixas, assinaturas e entradas que se repetem todo mês.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
 
       <section className="mt-6 grid gap-3 md:grid-cols-3">
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Despesas fixas</p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.DESPESA)}</strong><p className="mt-2 text-[.65rem] capitalize text-foreground-soft">{nomeMes.format(mesReferencia)}</p></article>
@@ -265,7 +265,7 @@ export default function RecorrenciasView() {
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Ainda a pagar em <span className="capitalize">{new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(mesReferencia)}</span></p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.PENDENTE)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Ocorrências ativas a partir de hoje</p></article>
       </section>
 
-      <CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoMesAnterior={() => mudarMes(-1)} aoProximoMes={() => mudarMes(1)} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} />
+      <CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} />
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
         <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
