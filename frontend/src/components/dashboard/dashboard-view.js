@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
 import { botaoSecundario, EsqueletoLista, FeedbackErro, FiltroSegmentado, SelectCampo } from "@/components/ui";
+import GraficoComparativo from "@/components/ui/grafico-comparativo";
 import { apiFetch } from "@/lib/api";
 import { categoriasDoMes, chaveMes, compromissoFixo, mediasCategorias, mesesAte, previsaoProximoMes, proximasRecorrencias, resumoMes, serieMensal } from "./dashboard-calculos";
 
@@ -62,16 +63,6 @@ function RoscaCategorias({ itens, total, selecionada, aoSelecionar }) {
   );
 }
 
-function GraficoFluxo({ serie, selecionado, aoSelecionar }) {
-  const maximo = Math.max(...serie.flatMap((item) => [item.receitas, item.despesas]), 1);
-  return (
-    <div className="mt-5">
-      <div className="flex h-52 items-end gap-1.5 sm:gap-3">{serie.map((item) => <button key={item.chave} type="button" onClick={() => aoSelecionar(item.chave)} className={`group flex h-full min-w-0 flex-1 items-end justify-center gap-1 rounded-xl px-1 pt-8 transition hover:bg-primary/[.035] ${selecionado === item.chave ? "bg-primary/[.045] ring-1 ring-primary/10" : ""}`} aria-label={`Filtrar o painel por ${mesLongo.format(item.data)}`}><span className="relative w-[34%] rounded-t-md bg-positive/75 transition group-hover:bg-positive" style={{ height: `${Math.max((item.receitas / maximo) * 100, 2)}%` }}><span className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[.52rem] font-bold text-positive group-hover:block">{moedaCompacta.format(item.receitas)}</span></span><span className="relative w-[34%] rounded-t-md bg-error/55 transition group-hover:bg-error/80" style={{ height: `${Math.max((item.despesas / maximo) * 100, 2)}%` }}><span className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[.52rem] font-bold text-error group-hover:block">{moedaCompacta.format(item.despesas)}</span></span></button>)}</div>
-      <div className="mt-2 flex gap-1.5 sm:gap-3">{serie.map((item) => <span key={item.chave} className="min-w-0 flex-1 text-center text-[.58rem] font-bold capitalize text-foreground-soft">{mesCurto.format(item.data).replace(".", "")}</span>)}</div>
-    </div>
-  );
-}
-
 function GraficoSaldo({ serie, aoSelecionar }) {
   const valores = serie.map((item) => item.saldo);
   const minimo = Math.min(...valores, 0);
@@ -85,6 +76,17 @@ function GraficoSaldo({ serie, aoSelecionar }) {
     <div className="mt-6">
       <svg viewBox={`-8 -8 ${largura + 16} ${altura + 16}`} className="h-44 w-full overflow-visible" preserveAspectRatio="none" aria-label="Evolução do saldo consolidado"><defs><linearGradient id="areaSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#006463" stopOpacity=".22" /><stop offset="1" stopColor="#006463" stopOpacity="0" /></linearGradient></defs><path d={area} fill="url(#areaSaldo)" /><path d={caminho} fill="none" stroke="#006463" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />{pontos.map((ponto) => <circle key={ponto.chave} cx={ponto.x} cy={ponto.y} r="6" fill="#fefefe" stroke="#006463" strokeWidth="3" vectorEffect="non-scaling-stroke" className="cursor-pointer outline-none" role="button" tabIndex="0" aria-label={`${mesLongo.format(ponto.data)}: ${moeda.format(ponto.saldo)}`} onClick={() => aoSelecionar(ponto.chave)} onKeyDown={(evento) => (evento.key === "Enter" || evento.key === " ") && aoSelecionar(ponto.chave)} />)}</svg>
       <div className="mt-1 flex">{serie.map((item) => <span key={item.chave} className="min-w-0 flex-1 text-center text-[.58rem] font-bold capitalize text-foreground-soft">{mesCurto.format(item.data).replace(".", "")}</span>)}</div>
+    </div>
+  );
+}
+
+function MedidorComprometimento({ percentual: valor }) {
+  const progresso = Math.min(Math.max(Number(valor), 0), 100);
+  const cor = progresso > 60 ? "#b44337" : progresso > 40 ? "#d39a52" : "#006463";
+  return (
+    <div className="relative mx-auto h-28 w-56 overflow-hidden">
+      <svg viewBox="0 0 180 105" className="size-full"><path d="M 15 92 A 75 75 0 0 1 165 92" pathLength="100" fill="none" stroke="rgba(0,58,48,.07)" strokeWidth="16" strokeLinecap="round" /><path d="M 15 92 A 75 75 0 0 1 165 92" pathLength="100" fill="none" stroke={cor} strokeWidth="16" strokeLinecap="round" strokeDasharray={`${progresso} 100`} /><circle cx="90" cy="92" r="5" fill={cor} /></svg>
+      <div className="absolute inset-x-0 bottom-0 text-center"><p className="text-2xl font-extrabold tracking-[-.04em] text-primary">{percentual(valor)}</p><p className="text-[.58rem] font-bold text-foreground-soft">da receita projetada</p></div>
     </div>
   );
 }
@@ -145,7 +147,7 @@ export default function DashboardView() {
 
         <section className="mt-5 grid gap-4 xl:grid-cols-[.78fr_1.22fr]">
           <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-extrabold text-primary">Próximos compromissos</h2><p className="mt-1 text-[.68rem] text-foreground-soft">O que já está previsto para cair.</p></div><FiltroSegmentado valor={janelaRecorrencias} aoAlterar={setJanelaRecorrencias} rotulo="Janela de recorrências" opcoes={[{ valor: "7", rotulo: "7 dias" }, { valor: "30", rotulo: "30 dias" }]} /></div><div className="mt-5 divide-y divide-primary/6">{proximas.slice(0, 5).map((item, indice) => <div key={`${item.id}-${item.dataOcorrencia}-${indice}`} className="flex items-center gap-3 py-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl text-[.62rem] font-extrabold ${item.tipo === "RECEITA" ? "bg-positive/9 text-positive" : "bg-error/8 text-error"}`}>{String(item.dataOcorrencia.getDate()).padStart(2, "0")}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-extrabold text-primary">{item.descricao}</p><p className="mt-0.5 truncate text-[.6rem] text-foreground-soft">{item.contaNome} · {dataCurta.format(item.dataOcorrencia)}</p></div><strong className={`whitespace-nowrap text-xs ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}>{item.tipo === "RECEITA" ? "+" : "−"}{moeda.format(item.valor)}</strong></div>)}{!proximas.length && <EstadoVazio>Nenhuma recorrência ativa nesta janela.</EstadoVazio>}</div><Link href="/recorrencias" className="mt-4 flex items-center justify-between text-[.68rem] font-extrabold text-secondary">Gerenciar recorrências <Icone nome="setaDireita" className="size-3.5" /></Link></article>
-          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-extrabold text-primary">Comprometimento fixo</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Quanto da receita projetada já tem destino.</p></div><p className="text-2xl font-extrabold tracking-[-.04em] text-primary">{percentual(fixo.percentual)}</p></div><BarraProgresso valor={fixo.percentual} limite={100} cor={fixo.percentual > 60 ? "bg-error" : "bg-secondary"} className="mt-5 h-2" /><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Fixos previstos</p><p className="mt-1 text-sm font-extrabold text-primary">{moeda.format(fixo.total)}</p></div><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Receita projetada</p><p className="mt-1 text-sm font-extrabold text-positive">{moeda.format(analise.receitasProjetadas)}</p></div><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Resultado projetado</p><p className={`mt-1 text-sm font-extrabold ${tomValor(analise.resultadoProjetado)}`}>{moeda.format(analise.resultadoProjetado)}</p></div></div><p className="mt-5 text-[.65rem] leading-5 text-foreground-soft">Quanto menor o comprometimento fixo, maior sua margem para absorver imprevistos e ajustar escolhas durante o mês.</p></article>
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div><h2 className="text-base font-extrabold text-primary">Comprometimento fixo</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Quanto da receita projetada já tem destino.</p></div><MedidorComprometimento percentual={fixo.percentual} /><div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Fixos previstos</p><p className="mt-1 text-sm font-extrabold text-primary">{moeda.format(fixo.total)}</p></div><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Receita projetada</p><p className="mt-1 text-sm font-extrabold text-positive">{moeda.format(analise.receitasProjetadas)}</p></div><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Resultado projetado</p><p className={`mt-1 text-sm font-extrabold ${tomValor(analise.resultadoProjetado)}`}>{moeda.format(analise.resultadoProjetado)}</p></div></div><p className="mt-5 text-[.65rem] leading-5 text-foreground-soft">Quanto menor o comprometimento fixo, maior sua margem para absorver imprevistos e ajustar escolhas durante o mês.</p></article>
         </section>
 
         <section className="mt-5 grid gap-4 2xl:grid-cols-[.75fr_1.25fr]">
@@ -154,7 +156,7 @@ export default function DashboardView() {
         </section>
 
         <section className="mt-5 grid gap-4 xl:grid-cols-2">
-          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-extrabold text-primary">Receita × despesa</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Clique em um mês para levar o relatório até ele.</p></div><div className="flex gap-3 text-[.58rem] font-bold text-foreground-soft"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-positive" />Receita</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error/65" />Despesa</span></div></div><GraficoFluxo serie={serie} selecionado={mesReferencia} aoSelecionar={setMesReferencia} /></article>
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-extrabold text-primary">Receita × despesa</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Passe pelo gráfico ou clique em um mês para filtrar.</p></div><div className="hidden gap-3 text-[.58rem] font-bold text-foreground-soft sm:flex"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-positive" />Receita</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error/65" />Despesa</span></div></div><GraficoComparativo dados={serie.map((item) => ({ ...item, rotulo: mesCurto.format(item.data).replace(".", ""), rotuloCompleto: mesLongo.format(item.data) }))} serieA={{ chave: "receitas", rotulo: "Receita", cor: "#087b55" }} serieB={{ chave: "despesas", rotulo: "Despesa", cor: "#b44337" }} formatar={(valor) => moeda.format(valor)} selecionado={mesReferencia} aoSelecionar={setMesReferencia} /></article>
           <article className="paper-card rounded-2xl p-5 sm:p-6"><div><h2 className="text-base font-extrabold text-primary">Evolução do saldo</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Patrimônio consolidado ao fim de cada mês.</p></div><GraficoSaldo serie={serie} aoSelecionar={setMesReferencia} /></article>
         </section>
 
