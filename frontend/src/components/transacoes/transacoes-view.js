@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, SelectCampo } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -15,13 +15,13 @@ async function buscarDados() {
   return { transacoes, contas, categorias };
 }
 
-function ModalTransacao({ transacao, contas, categorias, aoFechar, aoSalvar }) {
+function ModalTransacao({ transacao, contas, categorias, dataInicial, aoFechar, aoSalvar }) {
   const tipoInicial = transacao?.tipo
     ?? (categorias.some((categoria) => categoria.tipo === "DESPESA") ? "DESPESA" : categorias.some((categoria) => categoria.tipo === "RECEITA") ? "RECEITA" : "DESPESA");
   const [formulario, setFormulario] = useState({
     descricao: transacao?.descricao ?? "",
     valor: transacao?.valor?.toString() ?? "",
-    data: transacao?.data ?? hoje(),
+    data: transacao?.data ?? dataInicial ?? hoje(),
     tipo: tipoInicial,
     contaId: transacao?.contaId?.toString() ?? contas[0]?.id?.toString() ?? "",
     categoriaId: transacao?.categoriaId?.toString() ?? "",
@@ -95,24 +95,29 @@ export default function TransacoesView() {
   const [excluindo, setExcluindo] = useState(false);
   const [filtros, setFiltros] = useState({ busca: "", conta: "", categoria: "", tipo: "" });
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [mesReferencia, setMesReferencia] = useState(() => new Date());
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => { if (ativo) { setDados(resultado); if (new URLSearchParams(window.location.search).get("nova") === "1") setModalAberto(true); } }).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
 
-  const filtradas = useMemo(() => dados.transacoes.filter((item) => (!filtros.busca || item.descricao.toLocaleLowerCase("pt-BR").includes(filtros.busca.toLocaleLowerCase("pt-BR"))) && (!filtros.conta || item.contaId === Number(filtros.conta)) && (!filtros.categoria || item.categoriaId === Number(filtros.categoria)) && (!filtros.tipo || item.tipo === filtros.tipo)), [dados.transacoes, filtros]);
+  const chaveMes = `${mesReferencia.getFullYear()}-${String(mesReferencia.getMonth() + 1).padStart(2, "0")}`;
+  const filtradas = useMemo(() => dados.transacoes.filter((item) => item.data.startsWith(chaveMes) && (!filtros.busca || item.descricao.toLocaleLowerCase("pt-BR").includes(filtros.busca.toLocaleLowerCase("pt-BR"))) && (!filtros.conta || item.contaId === Number(filtros.conta)) && (!filtros.categoria || item.categoriaId === Number(filtros.categoria)) && (!filtros.tipo || item.tipo === filtros.tipo)), [dados.transacoes, filtros, chaveMes]);
   const agrupadas = useMemo(() => Object.entries(filtradas.reduce((grupos, item) => ({ ...grupos, [item.data]: [...(grupos[item.data] ?? []), item] }), {})).sort(([a], [b]) => b.localeCompare(a)), [filtradas]);
   const totais = useMemo(() => filtradas.reduce((total, item) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor) }), { RECEITA: 0, DESPESA: 0 }), [filtradas]);
   const configuracaoCompleta = dados.contas.length > 0 && dados.categorias.length > 0;
   const totalFiltrosAtivos = [filtros.conta, filtros.categoria, filtros.tipo].filter(Boolean).length;
+  const diaSugerido = Math.min(new Date().getDate(), new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0).getDate());
+  const dataInicial = `${chaveMes}-${String(diaSugerido).padStart(2, "0")}`;
 
   function abrirCriacao() { setTransacaoEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setTransacaoEditada(item); setModalAberto(true); }
   async function salvar(payload) { await apiFetch(transacaoEditada ? `/transacoes/${transacaoEditada.id}` : "/transacoes", { method: transacaoEditada ? "PUT" : "POST", body: JSON.stringify(payload) }); setModalAberto(false); setTransacaoEditada(null); await carregar(); }
   async function excluir() { setErro(""); setExcluindo(true); try { await apiFetch(`/transacoes/${transacaoExcluida.id}`, { method: "DELETE" }); setTransacaoExcluida(null); await carregar(); } catch (error) { setErro(error.message); } finally { setExcluindo(false); } }
+  function mudarMes(deslocamento) { setMesReferencia((atual) => new Date(atual.getFullYear(), atual.getMonth() + deslocamento, 1, 12)); }
 
   return (
     <main className="page-shell">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="page-eyebrow">Seu dinheiro em movimento</p><h1 className="page-title">Transações</h1><p className="page-description">Acompanhe tudo que entrou e saiu das suas contas.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova transação</button></div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><NavegacaoMes referencia={mesReferencia} aoMudar={mudarMes} /><h1 className="page-title">Transações</h1><p className="page-description">Acompanhe tudo que entrou e saiu das suas contas.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova transação</button></div>
 
       {!carregando && !configuracaoCompleta && <section className="mt-6 rounded-[1.5rem] border border-accent/15 bg-[#fbf5e9] p-5 sm:mt-7 sm:p-6">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
@@ -148,7 +153,7 @@ export default function TransacoesView() {
 
       <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <EsqueletoLista linhas={6} /> : agrupadas.length ? agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={setTransacaoExcluida} />)}</div>) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="transacoes" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma movimentação encontrada</h2><p className="mx-auto mt-2 max-w-md text-sm text-foreground-soft">Ajuste os filtros ou registre sua primeira receita ou despesa.</p><button type="button" onClick={abrirCriacao} className={`${botaoPrimario} mt-5`}>Nova transação</button></div>}</section>
 
-      {modalAberto && <ModalTransacao transacao={transacaoEditada} contas={dados.contas} categorias={dados.categorias} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
+      {modalAberto && <ModalTransacao transacao={transacaoEditada} contas={dados.contas} categorias={dados.categorias} dataInicial={dataInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
       {transacaoExcluida && <Confirmacao titulo={`Excluir “${transacaoExcluida.descricao}”?`} descricao="Essa movimentação será removida do histórico e dos totais financeiros. Esta ação não pode ser desfeita." confirmando={excluindo} aoCancelar={() => setTransacaoExcluida(null)} aoConfirmar={excluir} />}
     </main>
   );
