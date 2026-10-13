@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, EsqueletoLista, FeedbackErro } from "@/components/ui";
+import { botaoPrimario, EsqueletoLista, FeedbackErro, NavegacaoMes } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
-const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 
 function periodoDaData(referencia) {
   const inicio = new Date(referencia.getFullYear(), referencia.getMonth(), 1);
@@ -53,8 +52,6 @@ export default function VisaoGeral() {
   const proximas = useMemo(() => (dados?.recorrencias ?? []).slice(0, 4), [dados]);
   const maiorDespesa = Math.max(...(dados?.resumo.despesasPorCategoria ?? []).map((item) => Number(item.total)), 1);
   const taxaEconomia = dados?.resumo && Number(dados.resumo.totalReceitas) > 0 ? (Number(dados.resumo.resultadoPeriodo) / Number(dados.resumo.totalReceitas)) * 100 : 0;
-  const rotuloMes = nomeMes.format(mesReferencia);
-
   function moverMes(deslocamento) {
     setCarregando(true);
     setErro("");
@@ -66,7 +63,7 @@ export default function VisaoGeral() {
   return (
     <main className="page-shell">
       <section className="flex items-end justify-between gap-4">
-        <div><div className="mb-1 flex items-center gap-1 text-secondary"><button type="button" onClick={() => moverMes(-1)} className="grid size-6 place-items-center rounded-full transition hover:bg-secondary/8" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-3 rotate-180" /></button><p className="min-w-32 text-center text-xs font-extrabold">{rotuloMes.charAt(0).toUpperCase() + rotuloMes.slice(1)}</p><button type="button" onClick={() => moverMes(1)} className="grid size-6 place-items-center rounded-full transition hover:bg-secondary/8" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-3" /></button></div><h1 className="page-title">Olá, Paulo!</h1><p className="page-description">Seu dinheiro, com mais clareza.</p></div>
+        <div><NavegacaoMes referencia={mesReferencia} aoMudar={moverMes} /><h1 className="page-title">Olá, Paulo!</h1><p className="page-description">Seu dinheiro, com mais clareza.</p></div>
         <Link href="/transacoes?nova=1" className={`${botaoPrimario} size-11 !p-0 sm:size-auto sm:!px-5`}><Icone nome="mais" className="size-4" /><span className="hidden sm:inline">Nova transação</span></Link>
       </section>
 

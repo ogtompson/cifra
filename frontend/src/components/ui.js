@@ -8,6 +8,20 @@ export const botaoPrimario = "action-primary";
 export const botaoSecundario = "action-secondary";
 export const botaoIcone = "icon-action";
 
+const formatadorMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+
+export function NavegacaoMes({ referencia, aoMudar, className = "" }) {
+  const texto = formatadorMes.format(referencia);
+  const rotulo = texto.charAt(0).toUpperCase() + texto.slice(1);
+  return (
+    <div className={`flex w-fit items-center gap-1 text-secondary ${className}`} aria-label="Navegação mensal">
+      <button type="button" onClick={() => aoMudar(-1)} className="grid size-6 place-items-center rounded-full transition hover:bg-secondary/8" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-3 rotate-180" /></button>
+      <span className="min-w-32 text-center text-xs font-extrabold">{rotulo}</span>
+      <button type="button" onClick={() => aoMudar(1)} className="grid size-6 place-items-center rounded-full transition hover:bg-secondary/8" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-3" /></button>
+    </div>
+  );
+}
+
 export function SelectCampo({ valor, aoAlterar, opcoes, rotulo, nome, obrigatorio = false, desabilitado = false, placeholder = "Selecione" }) {
   const chaveSelecionada = valor === "" || valor === null || valor === undefined ? null : String(valor);
   const opcoesVisiveis = [...(obrigatorio ? [] : [{ valor: "", rotulo: placeholder }]), ...opcoes.filter((opcao) => opcao.valor !== "")];
