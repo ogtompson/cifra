@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, ModalPadrao } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, ModalPadrao, NavegacaoMes } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import OrcamentosPainel from "./orcamentos-painel";
 
@@ -176,7 +176,7 @@ export default function CategoriasView() {
 
   return (
     <main className="page-shell">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="page-eyebrow">Cada real no lugar certo</p><h1 className="page-title">Categorias</h1><p className="page-description">Organize suas movimentações e entenda seus hábitos financeiros.</p>{!carregando && <p className="mt-3 text-xs font-semibold text-foreground-soft"><strong className="text-primary">{separadas.DESPESA.length}</strong> de despesa · <strong className="text-primary">{separadas.RECEITA.length}</strong> de receita</p>}</div><button type="button" onClick={() => abrirCriacao()} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova categoria</button></div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><NavegacaoMes referencia={mesOrcamento} aoMudar={mudarMesOrcamento} /><h1 className="page-title">Categorias</h1><p className="page-description">Organize suas movimentações e entenda seus hábitos financeiros.</p>{!carregando && <p className="mt-3 text-xs font-semibold text-foreground-soft"><strong className="text-primary">{separadas.DESPESA.length}</strong> de despesa · <strong className="text-primary">{separadas.RECEITA.length}</strong> de receita</p>}</div><button type="button" onClick={() => abrirCriacao()} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova categoria</button></div>
 
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregarCategorias} />}
 
@@ -201,7 +201,7 @@ export default function CategoriasView() {
         </section>
       )}
 
-      {!carregando && <OrcamentosPainel categorias={categorias} orcamentos={orcamentos} referencia={mesOrcamento} aoMudarMes={mudarMesOrcamento} aoSalvar={salvarOrcamento} aoExcluir={excluirOrcamento} />}
+      {!carregando && <OrcamentosPainel categorias={categorias} orcamentos={orcamentos} referencia={mesOrcamento} aoSalvar={salvarOrcamento} aoExcluir={excluirOrcamento} />}
 
       <div className="mt-6 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /></>}</div>
 

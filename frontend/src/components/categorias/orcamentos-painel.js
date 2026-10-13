@@ -52,7 +52,7 @@ function EstadoOrcamento({ item }) {
   return <span className={`rounded-full px-2.5 py-1 text-[.6rem] font-extrabold ${configuracao.classe}`}>{configuracao.texto}</span>;
 }
 
-export default function OrcamentosPainel({ categorias, orcamentos, referencia, aoMudarMes, aoSalvar, aoExcluir }) {
+export default function OrcamentosPainel({ categorias, orcamentos, referencia, aoSalvar, aoExcluir }) {
   const [modal, setModal] = useState(null);
   const [categoriaInicial, setCategoriaInicial] = useState(null);
   const [excluido, setExcluido] = useState(null);
@@ -74,7 +74,7 @@ export default function OrcamentosPainel({ categorias, orcamentos, referencia, a
     <section className="paper-card mt-6 overflow-hidden rounded-[1.6rem]">
       <header className="flex flex-col gap-4 border-b border-primary/7 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div><h2 className="text-base font-extrabold text-primary">Orçamentos do mês</h2><p className="mt-0.5 text-xs text-foreground-soft">Limites para suas categorias de despesa.</p></div>
-        <div className="flex flex-wrap items-center gap-2"><div className="flex min-h-10 items-center rounded-full border border-primary/10 bg-app-surface p-0.5"><button type="button" onClick={() => aoMudarMes(-1)} className="grid size-8 place-items-center rounded-full text-primary transition hover:bg-primary/6" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-3.5 rotate-180" /></button><span className="min-w-36 px-2 text-center text-xs font-extrabold text-primary">{rotuloMes(referencia)}</span><button type="button" onClick={() => aoMudarMes(1)} className="grid size-8 place-items-center rounded-full text-primary transition hover:bg-primary/6" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-3.5" /></button></div><button type="button" onClick={() => abrirNovo()} disabled={!categoriasDisponiveis.length} className={`${botaoPrimario} !min-h-10`}><Icone nome="mais" className="size-4" /> Definir limite</button></div>
+        <button type="button" onClick={() => abrirNovo()} disabled={!categoriasDisponiveis.length} className={`${botaoPrimario} !min-h-10 self-start sm:self-auto`}><Icone nome="mais" className="size-4" /> Definir limite</button>
       </header>
 
       <div className="grid border-b border-primary/7 sm:grid-cols-3 sm:divide-x sm:divide-primary/7"><div className="px-5 py-4"><p className="text-xs text-foreground-soft">Total planejado</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(totais.limite)}</p></div><div className="border-t border-primary/7 px-5 py-4 sm:border-t-0"><p className="text-xs text-foreground-soft">Gasto realizado</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(totais.gasto)}</p></div><div className="border-t border-primary/7 px-5 py-4 sm:border-t-0"><p className="text-xs text-foreground-soft">Disponível</p><p className={`mt-1 text-lg font-extrabold ${disponivel >= 0 ? "text-positive" : "text-error"}`}>{moeda.format(disponivel)}</p></div></div>
