@@ -85,8 +85,8 @@ function MedidorComprometimento({ percentual: valor }) {
   const cor = progresso > 60 ? "#b44337" : progresso > 40 ? "#d39a52" : "#006463";
   return (
     <div className="relative mx-auto h-28 w-56 overflow-hidden">
-      <svg viewBox="0 0 180 105" className="size-full"><path d="M 15 92 A 75 75 0 0 1 165 92" pathLength="100" fill="none" stroke="rgba(0,58,48,.07)" strokeWidth="16" strokeLinecap="round" /><path d="M 15 92 A 75 75 0 0 1 165 92" pathLength="100" fill="none" stroke={cor} strokeWidth="16" strokeLinecap="round" strokeDasharray={`${progresso} 100`} /><circle cx="90" cy="92" r="5" fill={cor} /></svg>
-      <div className="absolute inset-x-0 bottom-0 text-center"><p className="text-2xl font-extrabold tracking-[-.04em] text-primary">{percentual(valor)}</p><p className="text-[.58rem] font-bold text-foreground-soft">da receita projetada</p></div>
+      <svg viewBox="0 0 180 105" className="size-full"><path d="M 15 92 A 75 75 0 0 1 165 92" pathLength="100" fill="none" stroke="rgba(0,58,48,.07)" strokeWidth="16" strokeLinecap="round" /><path d="M 15 92 A 75 75 0 0 1 165 92" pathLength="100" fill="none" stroke={cor} strokeWidth="16" strokeLinecap="round" strokeDasharray={`${progresso} 100`} /></svg>
+      <div className="absolute inset-x-0 top-[58%] -translate-y-1/2 text-center"><p className="text-2xl font-extrabold tracking-[-.04em] text-primary">{percentual(valor)}</p><p className="mt-0.5 text-[.58rem] font-bold text-foreground-soft">da receita projetada</p></div>
     </div>
   );
 }
