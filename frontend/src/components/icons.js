@@ -2,6 +2,7 @@ export function Icone({ nome, className = "size-5" }) {
   const caminhos = {
     inicio: <><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /><rect x="14" y="14" width="7" height="7" rx="2" /></>,
     contas: <><path d="M4 7.5h14.5A2.5 2.5 0 0 1 21 10v8.5A2.5 2.5 0 0 1 18.5 21h-14A2.5 2.5 0 0 1 2 18.5v-13A2.5 2.5 0 0 1 4.5 3H17" /><path d="M15.5 12H22v5h-6.5a2.5 2.5 0 0 1 0-5Z" /><circle cx="16" cy="14.5" r=".6" fill="currentColor" stroke="none" /></>,
+    cartoes: <><rect x="2.5" y="4.5" width="19" height="15" rx="3" /><path d="M2.5 9h19M6.5 15.5h4M17.5 15.5h.01" /></>,
     transacoes: <><path d="M4 8h14M15 5l3 3-3 3" /><path d="M20 16H6M9 13l-3 3 3 3" /></>,
     categorias: <><path d="m12 2.8 8.2 4.6v9.2L12 21.2l-8.2-4.6V7.4L12 2.8Z" /><path d="m4.2 7.6 7.8 4.5 7.8-4.5M12 12.1v8.7" /></>,
     recorrencias: <><rect x="3" y="4.5" width="18" height="16.5" rx="3" /><path d="M8 2.5v4M16 2.5v4M3 9h18" /><path d="M9 15a3.5 3.5 0 0 1 6.1-2.4M15 11.5v2.2h-2.2M15 15a3.5 3.5 0 0 1-6.1 2.4M9 18.5v-2.2h2.2" /></>,

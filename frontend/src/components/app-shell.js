@@ -10,6 +10,7 @@ const navegacao = [
   { nome: "Início", icone: "inicio", href: "/" },
   { nome: "Dashboard", icone: "grafico", href: "/dashboard" },
   { nome: "Contas", icone: "contas", href: "/contas" },
+  { nome: "Cartões", icone: "cartoes", href: "/cartoes" },
   { nome: "Transações", icone: "transacoes", href: "/transacoes" },
   { nome: "Categorias", icone: "categorias", href: "/categorias" },
   { nome: "Recorrências", icone: "recorrencias", href: "/recorrencias" },
@@ -37,8 +38,9 @@ function ItemNavegacao({ item, ativo, mobile = false }) {
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
-  const navegacaoPrincipalMobile = navegacao.slice(0, 4);
-  const navegacaoSecundariaMobile = navegacao.slice(4);
+  const rotasPrincipaisMobile = new Set(["/", "/dashboard", "/contas", "/transacoes"]);
+  const navegacaoPrincipalMobile = navegacao.filter((item) => rotasPrincipaisMobile.has(item.href));
+  const navegacaoSecundariaMobile = navegacao.filter((item) => !rotasPrincipaisMobile.has(item.href));
 
   return (
     <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.75rem_1fr]">
