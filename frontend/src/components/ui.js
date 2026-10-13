@@ -76,20 +76,40 @@ export function EsqueletoLista({ linhas = 5 }) {
   return (
     <div className="divide-y divide-primary/5" aria-label="Carregando conteúdo" aria-busy="true">
       {Array.from({ length: linhas }, (_, indice) => (
-        <div key={indice} className="flex animate-pulse items-center gap-3 px-4 py-4 sm:px-6">
-          <span className="size-10 shrink-0 rounded-xl bg-primary/7" />
-          <span className="h-3.5 w-1/3 rounded-full bg-primary/7" />
-          <span className="ml-auto h-3.5 w-20 rounded-full bg-primary/7" />
+        <div key={indice} className="flex items-center gap-3 px-4 py-4 sm:px-6">
+          <span className="skeleton size-10 shrink-0 rounded-xl" />
+          <span className="skeleton h-3.5 w-1/3 rounded-full" />
+          <span className="skeleton ml-auto h-3.5 w-20 rounded-full" />
         </div>
       ))}
     </div>
   );
 }
 
-export function FeedbackErro({ mensagem, aoTentarNovamente }) {
+export function EsqueletoBloco({ className = "h-40" }) {
+  return <div className={`skeleton rounded-2xl ${className}`} aria-label="Carregando conteúdo" aria-busy="true" />;
+}
+
+export function EstadoVazio({ icone = "outros", titulo, descricao, acao, compacto = false, className = "" }) {
   return (
-    <div className="feedback-error mt-5" role="alert">
-      <span>{mensagem}</span>
+    <div className={`empty-state ${compacto ? "is-compact" : ""} ${className}`}>
+      <span className="empty-state-icon"><Icone nome={icone} className={compacto ? "size-4" : "size-5"} /></span>
+      <div><h3 className="empty-state-title">{titulo}</h3>{descricao && <p className="empty-state-description">{descricao}</p>}</div>
+      {acao && <div className="empty-state-action">{acao}</div>}
+    </div>
+  );
+}
+
+export function ErroFormulario({ mensagem }) {
+  if (!mensagem) return null;
+  return <p className="form-error" role="alert"><Icone nome="alerta" className="size-4 shrink-0" />{mensagem}</p>;
+}
+
+export function FeedbackErro({ mensagem, aoTentarNovamente, className = "" }) {
+  return (
+    <div className={`feedback-error mt-5 ${className}`} role="alert">
+      <span className="feedback-error-icon"><Icone nome="alerta" className="size-4" /></span>
+      <div className="min-w-0 flex-1"><strong>Não foi possível concluir</strong><p>{mensagem}</p></div>
       {aoTentarNovamente && <button type="button" onClick={aoTentarNovamente}>Tentar novamente</button>}
     </div>
   );

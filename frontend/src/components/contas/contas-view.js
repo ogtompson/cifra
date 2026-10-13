@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, EsqueletoLista, FeedbackErro, ModalPadrao, SelectCampo } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, ErroFormulario, EsqueletoLista, EstadoVazio, FeedbackErro, ModalPadrao, SelectCampo } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const tiposConta = [
@@ -79,7 +78,7 @@ function ModalConta({ conta, aoFechar, aoSalvar }) {
             </label>
           </div>
 
-          {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
+          <ErroFormulario mensagem={erro} />
 
           <div className="modal-footer">
             <button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button>
@@ -140,7 +139,7 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
           <p className="mt-5 rounded-xl bg-app-surface p-4 text-sm leading-6 text-foreground-soft">A conta não possui transações ou recorrências vinculadas e pode ser excluída com segurança.</p>
         )}
 
-        {erro && <p className="mt-4 rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
+        <div className="mt-4"><ErroFormulario mensagem={erro} /></div>
 
         <div className="modal-footer">
           <button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button>
@@ -187,7 +186,7 @@ function CartaoConta({ conta, aoEditar, aoExcluir }) {
   const saldoNegativo = Number(conta.saldoAtual) < 0;
 
   return (
-    <article className="paper-card group rounded-[1.4rem] p-4 transition hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(0,58,48,0.09)] sm:p-5">
+    <article className="paper-card group rounded-[1.4rem] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary/10 text-secondary"><Icone nome="carteira" /></span>
@@ -325,9 +324,9 @@ export default function ContasView() {
       </div>
 
       <section className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3 border-y border-primary/7 py-4">
-        <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Saldo nas contas</p><p className={`mt-1 text-xl font-extrabold tracking-tight ${saldoTotal < 0 ? "text-error" : "text-primary"}`}>{carregando ? "—" : formatoMoeda.format(saldoTotal)}</p></div>
+        <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Saldo nas contas</p>{carregando ? <span className="skeleton mt-2 block h-6 w-28 rounded-full" /> : <p className={`mt-1 text-xl font-extrabold tracking-tight ${saldoTotal < 0 ? "text-error" : "text-primary"}`}>{formatoMoeda.format(saldoTotal)}</p>}</div>
         <div className="h-9 w-px bg-primary/8" aria-hidden="true" />
-        <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Ativas</p><p className="mt-1 text-xl font-extrabold text-primary">{carregando ? "—" : contasAtivas.length}</p></div>
+        <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Ativas</p>{carregando ? <span className="skeleton mt-2 block h-6 w-10 rounded-full" /> : <p className="mt-1 text-xl font-extrabold text-primary">{contasAtivas.length}</p>}</div>
         {contasArquivadas.length > 0 && <div><p className="text-[.65rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Arquivadas</p><p className="mt-1 text-xl font-extrabold text-primary">{contasArquivadas.length}</p></div>}
       </section>
 
@@ -337,16 +336,11 @@ export default function ContasView() {
         {carregando ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Carregando contas">{[1, 2, 3].map((item) => <div key={item} className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={2} /></div>)}</div>
         ) : contasAtivas.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+          <div className="content-enter grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {contasAtivas.map((conta) => <CartaoConta key={conta.id} conta={conta} aoEditar={abrirEdicao} aoExcluir={solicitarExclusao} />)}
           </div>
         ) : !erro ? (
-          <div className="rounded-[2rem] border border-dashed border-primary/20 bg-background px-6 py-14 text-center">
-            <Image src="/logomarca/simbolo-bau-contorno.svg" alt="" width={1046} height={943} className="mx-auto h-auto w-28 opacity-80" />
-            <h2 className="mt-5 text-xl font-extrabold text-primary">Sua primeira conta começa aqui</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-foreground-soft">Cadastre uma conta corrente, poupança, carteira ou investimento para acompanhar seu saldo.</p>
-            <button type="button" onClick={abrirCriacao} className="mt-6 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white transition hover:bg-secondary">Criar primeira conta</button>
-          </div>
+          <div className="paper-card overflow-hidden rounded-[1.5rem]"><EstadoVazio icone="contas" titulo="Sua primeira conta começa aqui" descricao="Cadastre uma conta corrente, poupança, carteira ou investimento para acompanhar seu saldo." acao={<button type="button" onClick={abrirCriacao} className={botaoPrimario}>Criar primeira conta</button>} /></div>
         ) : null}
       </section>
 

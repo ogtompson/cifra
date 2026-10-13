@@ -1,12 +1,13 @@
 "use client";
 
 import { Icone } from "@/components/icons";
+import { EstadoVazio } from "@/components/ui";
 
 export default function BudgetGuard({ budgets, emptyLabel = "Nenhum limite configurado para este mês.", onSelect, className = "" }) {
   return (
     <div className={className}>
       {budgets.length === 0 ? (
-        <p className="flex items-start justify-center gap-2 px-5 py-8 text-center text-xs text-foreground-soft"><Icone nome="grafico" className="mt-px size-4 shrink-0 text-secondary" />{emptyLabel}</p>
+        <EstadoVazio compacto icone="grafico" titulo="Nenhum limite neste mês" descricao={emptyLabel} />
       ) : (
         <ul className="divide-y divide-primary/7">
           {budgets.map((budget) => {
@@ -29,7 +30,7 @@ export default function BudgetGuard({ budgets, emptyLabel = "Nenhum limite confi
                 <div className="mt-1.5 flex items-center justify-between gap-3 text-[.6rem]"><span className="text-foreground-soft">Alerta a partir de 80%</span><span className={saldo >= 0 ? "font-bold text-positive" : "font-bold text-error"}>{saldo >= 0 ? `${budget.format(saldo)} disponíveis` : `${budget.format(Math.abs(saldo))} excedidos`}</span></div>
               </>
             );
-            return <li key={budget.id}>{onSelect ? <button type="button" onClick={() => onSelect(budget)} className="block w-full px-5 py-4 text-left transition hover:bg-secondary/[.025] focus-visible:bg-secondary/[.035] focus-visible:outline-none sm:px-6">{conteudo}</button> : <div className="px-5 py-4 sm:px-6">{conteudo}</div>}</li>;
+            return <li key={budget.id}>{onSelect ? <button type="button" onClick={() => onSelect(budget)} className="interactive-row block w-full px-5 py-4 text-left focus-visible:bg-secondary/[.035] focus-visible:outline-none sm:px-6">{conteudo}</button> : <div className="px-5 py-4 sm:px-6">{conteudo}</div>}</li>;
           })}
         </ul>
       )}

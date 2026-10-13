@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, ErroFormulario, EsqueletoLista, EstadoVazio, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -66,7 +66,7 @@ function ModalTransacao({ transacao, contas, categorias, dataInicial, aoFechar, 
           <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Descrição</span><input className={campo} name="descricao" value={formulario.descricao} onChange={alterar} maxLength={150} required autoFocus placeholder="Ex.: Supermercado" /></label>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Valor</span><input className={campo} name="valor" value={formulario.valor} onChange={alterar} type="number" min="0.01" step="0.01" required placeholder="0,00" /></label><label><span className="mb-2 block text-sm font-bold text-primary">Data</span><input className={campo} name="data" value={formulario.data} onChange={alterar} type="date" required /></label></div>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Conta</span><SelectCampo nome="contaId" valor={formulario.contaId} aoAlterar={(contaId) => setFormulario((atual) => ({ ...atual, contaId }))} opcoes={contas.map((conta) => ({ valor: conta.id, rotulo: conta.nome }))} rotulo="Conta" obrigatorio /></label><label><span className="mb-2 block text-sm font-bold text-primary">Categoria</span><SelectCampo nome="categoriaId" valor={formulario.categoriaId} aoAlterar={(categoriaId) => setFormulario((atual) => ({ ...atual, categoriaId }))} opcoes={categoriasCompativeis.map((categoria) => ({ valor: categoria.id, rotulo: categoria.nome }))} rotulo="Categoria" obrigatorio /></label></div>
-          {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
+          <ErroFormulario mensagem={erro} />
           <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : transacao ? "Salvar alterações" : "Criar transação"}</button></div>
         </form>}
     </ModalPadrao>
@@ -76,7 +76,7 @@ function ModalTransacao({ transacao, contas, categorias, dataInicial, aoFechar, 
 function LinhaTransacao({ transacao, aoEditar, aoExcluir }) {
   const receita = transacao.tipo === "RECEITA";
   return (
-    <article className="group grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-primary/6 px-4 py-3.5 transition-colors last:border-0 hover:bg-secondary/[0.025] sm:grid-cols-[auto_minmax(0,1fr)_10rem_10rem_auto] sm:py-4 sm:px-6">
+    <article className="interactive-row group grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-primary/6 px-4 py-3.5 last:border-0 sm:grid-cols-[auto_minmax(0,1fr)_10rem_10rem_auto] sm:py-4 sm:px-6">
       <span className={`grid size-10 place-items-center rounded-xl ${receita ? "bg-positive/10 text-positive" : "bg-error/8 text-error"}`}><Icone nome={receita ? "setaCima" : "setaBaixo"} className="size-4" /></span>
       <div className="min-w-0"><h3 className="truncate text-sm font-extrabold text-primary">{transacao.descricao}</h3><p className="mt-0.5 truncate text-xs text-foreground-soft sm:hidden">{transacao.categoriaNome} · {transacao.contaNome}</p>{transacao.recorrenciaId && <span className="mt-1 inline-block rounded-full bg-secondary/8 px-2 py-0.5 text-[.6rem] font-bold text-secondary">Recorrente</span>}</div>
       <p className="hidden truncate text-xs font-semibold text-foreground-soft sm:block">{transacao.categoriaNome}</p><p className="hidden truncate text-xs font-semibold text-foreground-soft sm:block">{transacao.contaNome}</p>
@@ -151,7 +151,7 @@ export default function TransacoesView() {
 
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
 
-      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <EsqueletoLista linhas={6} /> : agrupadas.length ? agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={setTransacaoExcluida} />)}</div>) : <div className="px-6 py-16 text-center"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/7 text-primary"><Icone nome="transacoes" /></span><h2 className="mt-4 text-lg font-extrabold text-primary">Nenhuma movimentação encontrada</h2><p className="mx-auto mt-2 max-w-md text-sm text-foreground-soft">Ajuste os filtros ou registre sua primeira receita ou despesa.</p><button type="button" onClick={abrirCriacao} className={`${botaoPrimario} mt-5`}>Nova transação</button></div>}</section>
+      <section className="paper-card mt-5 overflow-hidden rounded-[1.5rem]">{carregando ? <EsqueletoLista linhas={6} /> : agrupadas.length ? <div className="content-enter">{agrupadas.map(([data, itens]) => <div key={data}><header className="border-y border-primary/7 bg-app-surface/70 px-5 py-3 first:border-t-0 sm:px-6"><h2 className="text-xs font-extrabold capitalize text-primary">{dataCompleta.format(new Date(`${data}T12:00:00`))}</h2></header>{itens.map((item) => <LinhaTransacao key={item.id} transacao={item} aoEditar={abrirEdicao} aoExcluir={setTransacaoExcluida} />)}</div>)}</div> : <EstadoVazio icone="transacoes" titulo="Nenhuma movimentação encontrada" descricao="Ajuste os filtros ou registre sua primeira receita ou despesa." acao={<button type="button" onClick={abrirCriacao} className={botaoPrimario}>Nova transação</button>} />}</section>
 
       {modalAberto && <ModalTransacao transacao={transacaoEditada} contas={dados.contas} categorias={dados.categorias} dataInicial={dataInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
       {transacaoExcluida && <Confirmacao titulo={`Excluir “${transacaoExcluida.descricao}”?`} descricao="Essa movimentação será removida do histórico e dos totais financeiros. Esta ação não pode ser desfeita." confirmando={excluindo} aoCancelar={() => setTransacaoExcluida(null)} aoConfirmar={excluir} />}

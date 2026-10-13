@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Icone } from "@/components/icons";
-import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo, Switch } from "@/components/ui";
+import { botaoPrimario, botaoSecundario, campo, Confirmacao, ErroFormulario, EsqueletoBloco, EsqueletoLista, EstadoVazio, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo, Switch } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -111,7 +111,7 @@ function ModalRecorrencia({ recorrencia, contas, categorias, aoFechar, aoSalvar 
           <div className="grid gap-5 sm:grid-cols-3"><label><span className="mb-2 block text-sm font-bold text-primary">Frequência</span><SelectCampo nome="frequencia" valor={formulario.frequencia} aoAlterar={(frequencia) => setFormulario((atual) => ({ ...atual, frequencia, ...(frequencia !== "MENSAL" ? { diaDoMes: "" } : {}) }))} opcoes={[{ valor: "SEMANAL", rotulo: "Semanal" }, { valor: "MENSAL", rotulo: "Mensal" }, { valor: "ANUAL", rotulo: "Anual" }]} rotulo="Frequência" placeholder="Frequência" obrigatorio /></label>{formulario.frequencia === "MENSAL" && <label><span className="mb-2 block text-sm font-bold text-primary">Dia do mês</span><input className={campo} name="diaDoMes" value={formulario.diaDoMes} onChange={alterar} type="number" min="1" max="31" required /></label>}<label><span className="mb-2 block text-sm font-bold text-primary">Data inicial</span><input className={campo} name="dataInicio" value={formulario.dataInicio} onChange={alterar} type="date" required /></label><label><span className="mb-2 block text-sm font-bold text-primary">Data final <small className="font-normal text-foreground-soft">(opcional)</small></span><input className={campo} name="dataFim" value={formulario.dataFim} onChange={alterar} min={formulario.dataInicio} type="date" /></label></div>
           <div className="grid gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-bold text-primary">Conta</span><SelectCampo nome="contaId" valor={formulario.contaId} aoAlterar={(contaId) => setFormulario((atual) => ({ ...atual, contaId }))} opcoes={contas.map((conta) => ({ valor: conta.id, rotulo: conta.nome }))} rotulo="Conta" obrigatorio /></label><label><span className="mb-2 block text-sm font-bold text-primary">Categoria</span><SelectCampo nome="categoriaId" valor={formulario.categoriaId} aoAlterar={(categoriaId) => setFormulario((atual) => ({ ...atual, categoriaId }))} opcoes={categoriasCompativeis.map((categoria) => ({ valor: categoria.id, rotulo: categoria.nome }))} rotulo="Categoria" obrigatorio /></label></div>
           {!categoriasCompativeis.length && <p className="rounded-xl bg-accent/8 px-4 py-3 text-sm text-accent">Você ainda não possui uma categoria compatível. <Link href="/categorias" className="font-bold underline">Criar categoria</Link></p>}
-          {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
+          <ErroFormulario mensagem={erro} />
           <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando || !contas.length || !categoriasCompativeis.length} className={botaoPrimario}>{salvando ? "Salvando..." : recorrencia ? "Salvar alterações" : "Criar recorrência"}</button></div>
         </form>
     </ModalPadrao>
@@ -122,7 +122,7 @@ function LinhaRecorrencia({ item, aoEditar, aoAlternar, aoExcluir }) {
   const proxima = proximaOcorrencia(item);
   const receita = item.tipo === "RECEITA";
   return (
-    <article className={`group flex items-center gap-3 border-b border-primary/6 px-4 py-3 transition-colors last:border-0 hover:bg-secondary/[0.025] sm:px-5 ${item.ativa ? "" : "opacity-55"}`}>
+    <article className={`interactive-row group flex items-center gap-3 border-b border-primary/6 px-4 py-3 last:border-0 sm:px-5 ${item.ativa ? "" : "opacity-55"}`}>
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/[0.055] text-[.65rem] font-extrabold text-primary">{proxima ? String(proxima.getDate()).padStart(2, "0") : "—"}</span>
       <div className="min-w-0 flex-1"><h3 className="truncate text-sm font-extrabold text-primary">{item.descricao}</h3><p className="mt-0.5 truncate text-[.68rem] text-foreground-soft">{item.categoriaNome} · {frequencias[item.frequencia]} · {proxima ? dataCurta.format(proxima) : item.ativa ? "ciclo encerrado" : "pausada"}</p></div>
       <strong className={`hidden whitespace-nowrap text-xs sm:block ${receita ? "text-positive" : "text-primary"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong>
@@ -137,11 +137,11 @@ function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoA
     <section>
       <header className="mb-3 flex items-end justify-between gap-4 px-1">
         <div><h2 className="text-base font-extrabold text-primary">{titulo}</h2><p className="mt-0.5 text-xs text-foreground-soft">{descricao}</p></div>
-        <span className="rounded-full bg-primary/6 px-2.5 py-1 text-[.68rem] font-extrabold text-primary">{itens.length}</span>
+        {carregando ? <span className="skeleton h-6 w-8 rounded-full" /> : <span className="rounded-full bg-primary/6 px-2.5 py-1 text-[.68rem] font-extrabold text-primary">{itens.length}</span>}
       </header>
       <div className="paper-card min-h-24 overflow-hidden rounded-[1.35rem]">
         {carregando ? <EsqueletoLista linhas={3} /> : itens.length ? itens.map((item) => <LinhaRecorrencia key={item.id} item={item} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />) : (
-          <div className="px-6 py-10 text-center"><p className="text-sm font-bold text-primary">Nenhum item aqui</p><p className="mt-1 text-xs text-foreground-soft">Crie uma recorrência para começar.</p><button type="button" onClick={aoCriar} className="mt-4 text-xs font-extrabold text-secondary hover:underline">Adicionar recorrência</button></div>
+          <EstadoVazio compacto icone="recorrencias" titulo="Nenhuma recorrência aqui" descricao="Crie uma recorrência para começar." acao={<button type="button" onClick={aoCriar} className={botaoSecundario}>Adicionar recorrência</button>} />
         )}
       </div>
     </section>
@@ -174,7 +174,7 @@ function DetalhesDia({ dia, referencia, itens, alinharDireita, aoFechar, aoEdita
             <div className="mt-2 flex items-center justify-between gap-3"><strong className={`text-[.68rem] ${receita ? "text-positive" : "text-primary"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong><Switch compacto selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} /></div>
           </article>
         );
-      })}</div> : <p className="px-4 py-6 text-center text-xs text-foreground-soft">Nenhum compromisso previsto para este dia.</p>}
+      })}</div> : <EstadoVazio compacto icone="calendario" titulo="Nenhum compromisso neste dia" className="!min-h-0 !py-6" />}
 
       <footer className="flex items-center justify-between border-t border-primary/7 bg-primary/[0.025] px-3 py-2.5"><span className="text-[.6rem] text-foreground-soft">Saldo previsto do dia</span><strong className={`text-[.68rem] ${saldo > 0 ? "text-positive" : "text-primary"}`}>{saldo > 0 ? "+" : saldo < 0 ? "−" : ""} {moeda.format(Math.abs(saldo))}</strong></footer>
       </Dialog>
@@ -259,23 +259,24 @@ export default function RecorrenciasView() {
     <main className="page-shell">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><NavegacaoMes referencia={mesReferencia} aoMudar={mudarMes} /><h1 className="page-title">Recorrências</h1><p className="page-description">Contas fixas, assinaturas e entradas que se repetem todo mês.</p></div><button type="button" onClick={abrirCriacao} className={botaoPrimario}><Icone nome="mais" className="size-4" /> Nova recorrência</button></div>
 
-      <section className="mt-6 grid gap-3 md:grid-cols-3">
+      {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
+
+      {!erro && (carregando ? <section className="mt-6 grid gap-3 md:grid-cols-3" aria-label="Carregando resumo de recorrências"><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /></section> : <section className="content-enter mt-6 grid gap-3 md:grid-cols-3">
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Despesas fixas</p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.DESPESA)}</strong><p className="mt-2 text-[.65rem] capitalize text-foreground-soft">{nomeMes.format(mesReferencia)}</p></article>
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Receitas fixas</p><strong className="mt-2 block text-xl text-positive">{moeda.format(resumoMes.RECEITA)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Salários, aportes e outras entradas</p></article>
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Ainda a pagar em <span className="capitalize">{new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(mesReferencia)}</span></p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.PENDENTE)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Ocorrências ativas a partir de hoje</p></article>
-      </section>
+      </section>)}
 
-      <CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} />
+      {!erro && (carregando ? <EsqueletoBloco className="mt-5 h-[32rem]" /> : <div className="content-enter"><CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} /></div>)}
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
+      {!erro && !carregando && <div className="content-enter mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
         <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
         <FiltroSegmentado rotulo="Situação das recorrências" valor={situacao} aoAlterar={setSituacao} opcoes={[{ valor: "", rotulo: `Todas (${totais.todas})` }, { valor: "ATIVA", rotulo: `Ativas (${totais.ativas})` }, { valor: "PAUSADA", rotulo: `Pausadas (${totais.pausadas})` }]} />
-      </div>
-      {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
-      <div className="mt-6 grid gap-5 xl:grid-cols-2">
+      </div>}
+      {!erro && <div className="mt-6 grid gap-5 xl:grid-cols-2">
         <GrupoRecorrencias titulo="Despesas recorrentes" descricao="Compromissos que se repetem" itens={separadas.DESPESA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} aoCriar={abrirCriacao} />
         <GrupoRecorrencias titulo="Receitas recorrentes" descricao="Valores previstos com frequência" itens={separadas.RECEITA} carregando={carregando} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} aoCriar={abrirCriacao} />
-      </div>
+      </div>}
       {modalAberto && <ModalRecorrencia recorrencia={recorrenciaEditada} contas={dados.contas} categorias={dados.categorias} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
       {recorrenciaExcluida && <Confirmacao titulo={`Excluir “${recorrenciaExcluida.descricao}”?`} descricao="Os lançamentos já gerados permanecerão no histórico, mas novas ocorrências não serão criadas." confirmando={excluindo} aoCancelar={() => setRecorrenciaExcluida(null)} aoConfirmar={excluir} />}
     </main>

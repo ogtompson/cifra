@@ -18,14 +18,14 @@ export default function OrcamentosPainel({ categorias, orcamentos, aoEditarCateg
   }));
 
   return (
-    <section className="paper-card mt-6 overflow-hidden rounded-[1.6rem]">
+    <section className="paper-card content-enter mt-6 overflow-hidden rounded-[1.6rem]">
       <header className="border-b border-primary/7 px-4 py-4 sm:px-6"><h2 className="text-base font-extrabold text-primary">Orçamento do mês</h2><p className="mt-0.5 text-xs text-foreground-soft">Acompanhe os limites informados nas categorias de despesa.</p></header>
       <div className="grid border-b border-primary/7 sm:grid-cols-3 sm:divide-x sm:divide-primary/7">
         <div className="min-w-0 px-5 py-4 sm:px-6"><p className="text-xs text-foreground-soft">Planejado</p><strong className="mt-1 block truncate text-lg text-primary">{moeda.format(totais.limite)}</strong></div>
         <div className="min-w-0 border-t border-primary/7 px-5 py-4 sm:border-t-0 sm:px-6"><p className="text-xs text-foreground-soft">Realizado</p><strong className="mt-1 block truncate text-lg text-primary">{moeda.format(totais.gasto)}</strong></div>
         <div className="min-w-0 border-t border-primary/7 px-5 py-4 sm:border-t-0 sm:px-6"><p className="text-xs text-foreground-soft">Disponível</p><strong className={`mt-1 block truncate text-lg ${disponivel < 0 ? "text-error" : "text-positive"}`}>{moeda.format(disponivel)}</strong></div>
       </div>
-      <BudgetGuard budgets={budgets} emptyLabel="Nenhum limite neste mês. Você pode adicioná-lo ao criar ou editar uma categoria de despesa." onSelect={(budget) => budget.categoria && aoEditarCategoria(budget.categoria)} />
+      <BudgetGuard budgets={budgets} emptyLabel="Adicione um limite ao criar ou editar uma categoria de despesa." onSelect={(budget) => budget.categoria && aoEditarCategoria(budget.categoria)} />
     </section>
   );
 }
