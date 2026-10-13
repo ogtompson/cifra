@@ -10,16 +10,15 @@ const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 
-function periodoAtual() {
-  const hoje = new Date();
-  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-  const iso = (data) => data.toLocaleDateString("en-CA");
+function periodoDaData(referencia) {
+  const inicio = new Date(referencia.getFullYear(), referencia.getMonth(), 1);
+  const fim = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0);
+  const iso = (data) => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
   return { inicio: iso(inicio), fim: iso(fim) };
 }
 
-async function carregarPainel() {
-  const periodo = periodoAtual();
+async function carregarPainel(referencia) {
+  const periodo = periodoDaData(referencia);
   const [resumo, transacoes, recorrencias] = await Promise.all([
     apiFetch(`/resumo-financeiro?dataInicio=${periodo.inicio}&dataFim=${periodo.fim}`),
     apiFetch("/transacoes"),
@@ -38,30 +37,42 @@ function CabecalhoCard({ titulo, descricao, href, link }) {
 }
 
 export default function VisaoGeral() {
+  const hoje = useMemo(() => new Date(), []);
+  const [mesReferencia, setMesReferencia] = useState(() => new Date());
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     let ativo = true;
-    carregarPainel().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(error.message));
+    carregarPainel(mesReferencia).then((resultado) => { if (ativo) setDados(resultado); }).catch((error) => ativo && setErro(error.message)).finally(() => ativo && setCarregando(false));
     return () => { ativo = false; };
-  }, []);
+  }, [mesReferencia]);
 
-  const ultimas = useMemo(() => [...(dados?.transacoes ?? [])].sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id).slice(0, 5), [dados]);
+  const periodo = useMemo(() => periodoDaData(mesReferencia), [mesReferencia]);
+  const ultimas = useMemo(() => [...(dados?.transacoes ?? [])].filter((item) => item.data >= periodo.inicio && item.data <= periodo.fim).sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id).slice(0, 5), [dados, periodo]);
   const proximas = useMemo(() => (dados?.recorrencias ?? []).slice(0, 4), [dados]);
   const maiorDespesa = Math.max(...(dados?.resumo.despesasPorCategoria ?? []).map((item) => Number(item.total)), 1);
   const taxaEconomia = dados?.resumo && Number(dados.resumo.totalReceitas) > 0 ? (Number(dados.resumo.resultadoPeriodo) / Number(dados.resumo.totalReceitas)) * 100 : 0;
+  const noMesAtual = mesReferencia.getFullYear() === hoje.getFullYear() && mesReferencia.getMonth() === hoje.getMonth();
+  const rotuloMes = nomeMes.format(mesReferencia);
+
+  function moverMes(deslocamento) {
+    setCarregando(true);
+    setErro("");
+    setMesReferencia((atual) => new Date(atual.getFullYear(), atual.getMonth() + deslocamento, 1, 12));
+  }
 
   if (erro) return <main className="page-shell"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
     <main className="page-shell">
       <section className="flex items-end justify-between gap-4">
-        <div><p className="page-eyebrow capitalize">{nomeMes.format(new Date())}</p><h1 className="page-title">Olá, Paulo!</h1><p className="page-description">Seu dinheiro, com mais clareza.</p></div>
+        <div><div className="mb-1 flex items-center gap-1 text-secondary"><button type="button" onClick={() => moverMes(-1)} className="grid size-6 place-items-center rounded-full transition hover:bg-secondary/8" aria-label="Mês anterior"><Icone nome="setaDireita" className="size-3 rotate-180" /></button><p className="min-w-32 text-center text-xs font-extrabold">{rotuloMes.charAt(0).toUpperCase() + rotuloMes.slice(1)}</p><button type="button" onClick={() => moverMes(1)} disabled={noMesAtual} className="grid size-6 place-items-center rounded-full transition hover:bg-secondary/8 disabled:cursor-not-allowed disabled:opacity-25" aria-label="Próximo mês"><Icone nome="setaDireita" className="size-3" /></button></div><h1 className="page-title">Olá, Paulo!</h1><p className="page-description">Seu dinheiro, com mais clareza.</p></div>
         <Link href="/transacoes?nova=1" className={`${botaoPrimario} size-11 !p-0 sm:size-auto sm:!px-5`}><Icone nome="mais" className="size-4" /><span className="hidden sm:inline">Nova transação</span></Link>
       </section>
 
-      {!dados ? <div className="mt-5 space-y-4"><div className="h-48 animate-pulse rounded-2xl bg-primary/7" /><div className="grid gap-4 xl:grid-cols-2"><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div></div></div> : <>
+      {!dados || carregando ? <div className="mt-5 space-y-4"><div className="h-48 animate-pulse rounded-2xl bg-primary/7" /><div className="grid gap-4 xl:grid-cols-2"><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div></div></div> : <>
         <section className="balance-panel relative mt-5 overflow-hidden rounded-2xl px-5 py-5 text-white shadow-[0_16px_40px_rgba(0,58,48,.14)] sm:px-7 sm:py-7">
           <div className="relative z-10 grid gap-6 md:grid-cols-[1fr_minmax(13rem,.38fr)] md:items-center">
             <div><p className="text-[.65rem] font-bold uppercase tracking-[.15em] text-white/55">Saldo consolidado</p><p className="mt-1.5 text-3xl font-extrabold tracking-[-.045em] sm:text-4xl">{moeda.format(dados.resumo.saldoTotal)}</p>
