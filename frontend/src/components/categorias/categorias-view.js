@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
 import { botaoPrimario, botaoSecundario, campo, Confirmacao, EsqueletoLista, FeedbackErro, ModalPadrao } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import OrcamentosPainel from "./orcamentos-painel";
 
 const configuracao = {
   DESPESA: { rotulo: "Despesas", singular: "despesa", cor: "error", descricao: "Para onde o seu dinheiro vai" },
@@ -41,6 +42,10 @@ function iconeDaCategoria(nome) {
 
 async function buscarCategorias() {
   return apiFetch("/categorias");
+}
+
+function mesIso(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
@@ -105,6 +110,8 @@ export default function CategoriasView() {
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const [categoriaExcluida, setCategoriaExcluida] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [orcamentos, setOrcamentos] = useState([]);
+  const [mesOrcamento, setMesOrcamento] = useState(() => new Date());
 
   const carregarCategorias = useCallback(async () => {
     setCarregando(true); setErro("");
@@ -116,6 +123,20 @@ export default function CategoriasView() {
     buscarCategorias().then((resultado) => ativo && setCategorias(resultado)).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false));
     return () => { ativo = false; };
   }, []);
+
+  const carregarOrcamentos = useCallback(async () => {
+    try {
+      setOrcamentos(await apiFetch(`/orcamentos?mesReferencia=${mesIso(mesOrcamento)}`));
+    } catch (error) {
+      setErro(error.message);
+    }
+  }, [mesOrcamento]);
+
+  useEffect(() => {
+    let ativo = true;
+    apiFetch(`/orcamentos?mesReferencia=${mesIso(mesOrcamento)}`).then((resultado) => ativo && setOrcamentos(resultado)).catch((error) => ativo && setErro(error.message));
+    return () => { ativo = false; };
+  }, [mesOrcamento]);
 
   const separadas = useMemo(() => ({ DESPESA: categorias.filter((categoria) => categoria.tipo === "DESPESA"), RECEITA: categorias.filter((categoria) => categoria.tipo === "RECEITA") }), [categorias]);
   const sugestoesDisponiveis = useMemo(() => {
@@ -138,6 +159,19 @@ export default function CategoriasView() {
     } finally {
       setAdicionandoSugestao("");
     }
+  }
+  async function salvarOrcamento(id, payload) {
+    setErro("");
+    await apiFetch(id ? `/orcamentos/${id}` : "/orcamentos", { method: id ? "PUT" : "POST", body: JSON.stringify(payload) });
+    await carregarOrcamentos();
+  }
+  async function excluirOrcamento(id) {
+    setErro("");
+    await apiFetch(`/orcamentos/${id}`, { method: "DELETE" });
+    await carregarOrcamentos();
+  }
+  function mudarMesOrcamento(deslocamento) {
+    setMesOrcamento((atual) => new Date(atual.getFullYear(), atual.getMonth() + deslocamento, 1, 12));
   }
 
   return (
@@ -166,6 +200,8 @@ export default function CategoriasView() {
           </div>}
         </section>
       )}
+
+      {!carregando && <OrcamentosPainel categorias={categorias} orcamentos={orcamentos} referencia={mesOrcamento} aoMudarMes={mudarMesOrcamento} aoSalvar={salvarOrcamento} aoExcluir={excluirOrcamento} />}
 
       <div className="mt-6 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /></>}</div>
 
