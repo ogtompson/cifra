@@ -11,6 +11,13 @@ const configuracao = {
   RECEITA: { rotulo: "Receitas", singular: "receita", cor: "positive", descricao: "De onde o seu dinheiro vem" },
 };
 
+const nomeMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+
+function rotuloMes(data) {
+  const texto = nomeMes.format(data);
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 const sugestoes = [
   { nome: "Moradia", tipo: "DESPESA", icone: "casa" },
   { nome: "Alimentação", tipo: "DESPESA", icone: "alimentacao" },
@@ -48,8 +55,8 @@ function mesIso(data) {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
-  const [formulario, setFormulario] = useState({ nome: categoria?.nome ?? "", tipo: categoria?.tipo ?? tipoInicial });
+function ModalCategoria({ categoria, orcamento, referencia, tipoInicial, aoFechar, aoSalvar }) {
+  const [formulario, setFormulario] = useState({ nome: categoria?.nome ?? "", tipo: categoria?.tipo ?? tipoInicial, limiteMensal: orcamento?.valorLimite?.toString() ?? "" });
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
@@ -58,7 +65,7 @@ function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
     setErro("");
     setSalvando(true);
     try {
-      await aoSalvar({ nome: formulario.nome.trim(), tipo: formulario.tipo });
+      await aoSalvar({ nome: formulario.nome.trim(), tipo: formulario.tipo, limiteMensal: formulario.tipo === "DESPESA" ? formulario.limiteMensal : "" });
     } catch (error) {
       setErro(error.message);
       setSalvando(false);
@@ -70,6 +77,7 @@ function ModalCategoria({ categoria, tipoInicial, aoFechar, aoSalvar }) {
         <form className="modal-body space-y-5" onSubmit={enviar}>
           <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Nome</span><input name="nome" value={formulario.nome} onChange={(evento) => setFormulario((atual) => ({ ...atual, nome: evento.target.value }))} maxLength={100} required autoFocus placeholder="Ex.: Alimentação" className={campo} /></label>
           <fieldset><legend className="mb-2 text-sm font-bold text-primary">Tipo</legend><div className="operation-switch">{["DESPESA", "RECEITA"].map((tipo) => <label key={tipo} className={`operation-option ${formulario.tipo === tipo ? "is-active" : ""}`}><input type="radio" name="tipo" value={tipo} checked={formulario.tipo === tipo} onChange={(evento) => setFormulario((atual) => ({ ...atual, tipo: evento.target.value }))} className="sr-only" />{configuracao[tipo].singular[0].toUpperCase() + configuracao[tipo].singular.slice(1)}</label>)}</div></fieldset>
+          {formulario.tipo === "DESPESA" && <label className="block"><span className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm font-bold text-primary"><span>Limite mensal <small className="font-normal text-foreground-soft">(opcional)</small></span><small className="font-normal text-foreground-soft">{rotuloMes(referencia)}</small></span><input className={campo} type="number" min="0.01" step="0.01" value={formulario.limiteMensal} onChange={(evento) => setFormulario((atual) => ({ ...atual, limiteMensal: evento.target.value }))} placeholder="Sem limite" /><span className="mt-2 block text-[.65rem] leading-5 text-foreground-soft">Use este valor apenas se quiser acompanhar o orçamento da categoria neste mês.{orcamento ? " Deixe em branco para remover o limite atual." : ""}</span></label>}
           {erro && <p className="rounded-xl bg-error/10 px-4 py-3 text-sm font-semibold text-error" role="alert">{erro}</p>}
           <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando} className={botaoPrimario}>{salvando ? "Salvando..." : categoria ? "Salvar alterações" : "Criar categoria"}</button></div>
         </form>
@@ -139,6 +147,7 @@ export default function CategoriasView() {
   }, [mesOrcamento]);
 
   const separadas = useMemo(() => ({ DESPESA: categorias.filter((categoria) => categoria.tipo === "DESPESA"), RECEITA: categorias.filter((categoria) => categoria.tipo === "RECEITA") }), [categorias]);
+  const orcamentosPorCategoria = useMemo(() => new Map(orcamentos.map((orcamento) => [String(orcamento.categoriaId), orcamento])), [orcamentos]);
   const sugestoesDisponiveis = useMemo(() => {
     const existentes = new Set(categorias.map((categoria) => `${categoria.tipo}:${normalizar(categoria.nome)}`));
     return sugestoes.filter((sugestao) => !existentes.has(`${sugestao.tipo}:${normalizar(sugestao.nome)}`));
@@ -146,7 +155,28 @@ export default function CategoriasView() {
 
   function abrirCriacao(tipo = "DESPESA") { setCategoriaEditada(null); setTipoInicial(tipo); setModalAberto(true); }
   function abrirEdicao(categoria) { setCategoriaEditada(categoria); setTipoInicial(categoria.tipo); setModalAberto(true); }
-  async function salvar(dados) { await apiFetch(categoriaEditada ? `/categorias/${categoriaEditada.id}` : "/categorias", { method: categoriaEditada ? "PUT" : "POST", body: JSON.stringify(dados) }); setModalAberto(false); setCategoriaEditada(null); await carregarCategorias(); }
+  async function salvar(dados) {
+    const { limiteMensal, ...dadosCategoria } = dados;
+    const criando = !categoriaEditada;
+    const orcamentoAtual = categoriaEditada ? orcamentosPorCategoria.get(String(categoriaEditada.id)) : null;
+    let categoriaSalva;
+    try {
+      categoriaSalva = await apiFetch(categoriaEditada ? `/categorias/${categoriaEditada.id}` : "/categorias", { method: categoriaEditada ? "PUT" : "POST", body: JSON.stringify(dadosCategoria) });
+      if (dadosCategoria.tipo === "DESPESA" && limiteMensal !== "") {
+        await apiFetch(orcamentoAtual ? `/orcamentos/${orcamentoAtual.id}` : "/orcamentos", { method: orcamentoAtual ? "PUT" : "POST", body: JSON.stringify({ categoriaId: categoriaSalva.id, mesReferencia: mesIso(mesOrcamento), valorLimite: Number(limiteMensal) }) });
+      } else if (orcamentoAtual) {
+        await apiFetch(`/orcamentos/${orcamentoAtual.id}`, { method: "DELETE" });
+      }
+    } catch (error) {
+      if (criando && categoriaSalva?.id) {
+        try { await apiFetch(`/categorias/${categoriaSalva.id}`, { method: "DELETE" }); } catch { /* A categoria permanece disponível para correção manual. */ }
+      }
+      throw error;
+    }
+    setModalAberto(false);
+    setCategoriaEditada(null);
+    await Promise.all([carregarCategorias(), carregarOrcamentos()]);
+  }
   async function excluir() { setErro(""); setExcluindo(true); try { await apiFetch(`/categorias/${categoriaExcluida.id}`, { method: "DELETE" }); setCategoriaExcluida(null); await carregarCategorias(); } catch (error) { setErro(error.message); } finally { setExcluindo(false); } }
   async function adicionarSugestao(sugestao) {
     setErro("");
@@ -159,16 +189,6 @@ export default function CategoriasView() {
     } finally {
       setAdicionandoSugestao("");
     }
-  }
-  async function salvarOrcamento(id, payload) {
-    setErro("");
-    await apiFetch(id ? `/orcamentos/${id}` : "/orcamentos", { method: id ? "PUT" : "POST", body: JSON.stringify(payload) });
-    await carregarOrcamentos();
-  }
-  async function excluirOrcamento(id) {
-    setErro("");
-    await apiFetch(`/orcamentos/${id}`, { method: "DELETE" });
-    await carregarOrcamentos();
   }
   function mudarMesOrcamento(deslocamento) {
     setMesOrcamento((atual) => new Date(atual.getFullYear(), atual.getMonth() + deslocamento, 1, 12));
@@ -201,11 +221,11 @@ export default function CategoriasView() {
         </section>
       )}
 
-      {!carregando && <OrcamentosPainel categorias={categorias} orcamentos={orcamentos} referencia={mesOrcamento} aoSalvar={salvarOrcamento} aoExcluir={excluirOrcamento} />}
+      {!carregando && <OrcamentosPainel categorias={categorias} orcamentos={orcamentos} aoEditarCategoria={abrirEdicao} />}
 
       <div className="mt-6 grid gap-5 xl:grid-cols-2">{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /></>}</div>
 
-      {modalAberto && <ModalCategoria categoria={categoriaEditada} tipoInicial={tipoInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
+      {modalAberto && <ModalCategoria categoria={categoriaEditada} orcamento={categoriaEditada ? orcamentosPorCategoria.get(String(categoriaEditada.id)) : null} referencia={mesOrcamento} tipoInicial={tipoInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
       {categoriaExcluida && <Confirmacao titulo={`Excluir “${categoriaExcluida.nome}”?`} descricao="A categoria só poderá ser excluída se não estiver vinculada a movimentações, recorrências ou orçamentos." confirmando={excluindo} aoCancelar={() => setCategoriaExcluida(null)} aoConfirmar={excluir} />}
     </main>
   );
