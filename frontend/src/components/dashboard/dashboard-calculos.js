@@ -195,3 +195,14 @@ export function compromissoFixo({ recorrencias, receitas, chave, contaId = "", c
   const total = soma(despesas);
   return { total, percentual: receitas > 0 ? (total / receitas) * 100 : 0 };
 }
+
+export function previsaoProximoMes({ recorrencias, chave, contaId = "", categoriaId = "" }) {
+  const { inicio } = limitesMes(chave);
+  const referencia = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 1, 12);
+  const fim = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0, 12);
+  const ocorrencias = filtrarRecorrencias(recorrencias, { contaId, categoriaId })
+    .flatMap((item) => ocorrenciasEntre(item, referencia, fim).map((data) => ({ ...item, dataOcorrencia: data })));
+  const receitas = soma(ocorrencias.filter((item) => item.tipo === "RECEITA"), (item) => item.valor);
+  const despesas = soma(ocorrencias.filter((item) => item.tipo === "DESPESA"), (item) => item.valor);
+  return { referencia, ocorrencias, receitas, despesas, necessidade: Math.max(despesas - receitas, 0), resultado: receitas - despesas };
+}
