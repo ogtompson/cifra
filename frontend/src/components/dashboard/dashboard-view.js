@@ -3,99 +3,162 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icone } from "@/components/icons";
-import { botaoSecundario, EsqueletoLista, FeedbackErro } from "@/components/ui";
+import { botaoSecundario, EsqueletoLista, FeedbackErro, FiltroSegmentado, SelectCampo } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import { categoriasDoMes, chaveMes, compromissoFixo, mediasCategorias, mesesAte, previsaoProximoMes, proximasRecorrencias, resumoMes, serieMensal } from "./dashboard-calculos";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const moedaCompacta = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
 const mesCurto = new Intl.DateTimeFormat("pt-BR", { month: "short" });
 const mesLongo = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
-const coresContas = ["bg-[#dbeee5]", "bg-[#dedaf0]", "bg-[#f3e1c4]", "bg-[#dcebea]"];
-
-function mesesRecentes(quantidade = 6) {
-  const hoje = new Date();
-  return Array.from({ length: quantidade }, (_, indice) => {
-    const data = new Date(hoje.getFullYear(), hoje.getMonth() - (quantidade - 1 - indice), 1);
-    const fim = new Date(data.getFullYear(), data.getMonth() + 1, 0);
-    return { data, inicio: data.toLocaleDateString("en-CA"), fim: fim.toLocaleDateString("en-CA") };
-  });
-}
+const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+const CORES = ["#006463", "#d39a52", "#ad6248", "#80a89d", "#c6b8a4", "#dfe4df"];
 
 async function carregarDashboard() {
-  const meses = mesesRecentes();
-  const [historico, contas] = await Promise.all([
-    Promise.all(meses.map(async (mes) => ({ ...mes, resumo: await apiFetch(`/resumo-financeiro?dataInicio=${mes.inicio}&dataFim=${mes.fim}`) }))),
-    apiFetch("/contas"),
-  ]);
-  const saldos = await Promise.all(contas.map((conta) => apiFetch(`/contas/${conta.id}/saldo`)));
-  return { historico, contas: contas.map((conta, indice) => ({ ...conta, ...saldos[indice] })) };
+  const [contas, transacoes, recorrencias] = await Promise.all([apiFetch("/contas"), apiFetch("/transacoes"), apiFetch("/recorrencias")]);
+  return { contas, transacoes, recorrencias };
 }
 
-function CardKpi({ rotulo, valor, detalhe, tom = "neutro" }) {
-  const cores = tom === "positivo" ? "text-positive" : tom === "negativo" ? "text-error" : "text-primary";
-  return <article className="group rounded-xl border border-primary/7 bg-white/85 px-3.5 py-3 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] sm:px-4 sm:py-3.5"><p className="text-[.58rem] font-bold uppercase tracking-[.1em] text-foreground-soft sm:text-[.62rem]">{rotulo}</p><p className={`mt-1.5 truncate text-base font-extrabold sm:text-xl ${cores}`}>{valor}</p><p className="mt-1 truncate text-[.6rem] text-foreground-soft sm:text-[.65rem]">{detalhe}</p></article>;
+function percentual(valor) {
+  return `${Number(valor || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
 }
 
-function variacaoPercentual(atual, anterior) {
-  const base = Number(anterior);
-  if (!base) return null;
-  return ((Number(atual) - base) / Math.abs(base)) * 100;
+function tomValor(valor) {
+  return Number(valor) >= 0 ? "text-positive" : "text-error";
+}
+
+function CartaoMetrica({ rotulo, valor, detalhe, icone, tom = "neutro", destaque = false }) {
+  const cor = tom === "positivo" ? "text-positive" : tom === "negativo" ? "text-error" : "text-primary";
+  return (
+    <article className={`paper-card group rounded-2xl p-4 transition hover:-translate-y-0.5 sm:p-5 ${destaque ? "bg-primary text-white" : ""}`}>
+      <div className="flex items-center justify-between gap-3"><p className={`text-[.65rem] font-extrabold uppercase tracking-[.12em] ${destaque ? "text-white/55" : "text-foreground-soft"}`}>{rotulo}</p><span className={`grid size-8 place-items-center rounded-full ${destaque ? "bg-white/10 text-white" : "bg-primary/5 text-secondary"}`}><Icone nome={icone} className="size-4" /></span></div>
+      <p className={`mt-4 truncate text-2xl font-extrabold tracking-[-.04em] sm:text-[1.7rem] ${destaque ? "text-white" : cor}`}>{valor}</p>
+      <p className={`mt-1.5 text-[.68rem] leading-5 ${destaque ? "text-white/55" : "text-foreground-soft"}`}>{detalhe}</p>
+    </article>
+  );
+}
+
+function BarraProgresso({ valor, limite = 100, cor = "bg-secondary", className = "" }) {
+  const largura = Math.min(Math.max((Number(valor) / Math.max(Number(limite), 1)) * 100, 0), 100);
+  return <div className={`h-1.5 overflow-hidden rounded-full bg-primary/7 ${className}`}><div className={`h-full rounded-full transition-all duration-500 ${cor}`} style={{ width: `${largura}%` }} /></div>;
+}
+
+function RoscaCategorias({ itens, total, selecionada, aoSelecionar }) {
+  const raio = 48;
+  const circunferencia = 2 * Math.PI * raio;
+  const segmentos = itens.reduce((resultado, item, indice) => {
+    const fracao = total > 0 ? item.total / total : 0;
+    const acumulado = resultado.reduce((soma, segmento) => soma + segmento.fracao, 0);
+    return [...resultado, { ...item, fracao, cor: CORES[indice % CORES.length], comprimento: fracao * circunferencia, deslocamento: -acumulado * circunferencia }];
+  }, []);
+  return (
+    <div className="relative mx-auto size-48 sm:size-52">
+      <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-label="Distribuição das despesas por categoria">
+        <circle cx="60" cy="60" r={raio} fill="none" stroke="rgba(0,58,48,.06)" strokeWidth="13" />
+        {segmentos.map((item) => <circle key={item.id} cx="60" cy="60" r={raio} fill="none" stroke={item.cor} strokeWidth={selecionada && String(selecionada) !== item.id ? 8 : 13} strokeDasharray={`${item.comprimento} ${circunferencia - item.comprimento}`} strokeDashoffset={item.deslocamento} className="cursor-pointer transition-all hover:opacity-80 focus:outline-none" role="button" tabIndex="0" aria-label={`Filtrar por ${item.nome}`} onClick={() => aoSelecionar(item.id)} onKeyDown={(evento) => (evento.key === "Enter" || evento.key === " ") && aoSelecionar(item.id)} />)}
+      </svg>
+      <div className="pointer-events-none absolute inset-0 grid place-items-center text-center"><div><p className="text-[.6rem] font-bold uppercase tracking-[.1em] text-foreground-soft">Despesas</p><p className="mt-1 text-lg font-extrabold text-primary">{moedaCompacta.format(total)}</p></div></div>
+    </div>
+  );
+}
+
+function GraficoFluxo({ serie, selecionado, aoSelecionar }) {
+  const maximo = Math.max(...serie.flatMap((item) => [item.receitas, item.despesas]), 1);
+  return (
+    <div className="mt-5">
+      <div className="flex h-52 items-end gap-1.5 sm:gap-3">{serie.map((item) => <button key={item.chave} type="button" onClick={() => aoSelecionar(item.chave)} className={`group flex h-full min-w-0 flex-1 items-end justify-center gap-1 rounded-xl px-1 pt-8 transition hover:bg-primary/[.035] ${selecionado === item.chave ? "bg-primary/[.045] ring-1 ring-primary/10" : ""}`} aria-label={`Filtrar o painel por ${mesLongo.format(item.data)}`}><span className="relative w-[34%] rounded-t-md bg-positive/75 transition group-hover:bg-positive" style={{ height: `${Math.max((item.receitas / maximo) * 100, 2)}%` }}><span className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[.52rem] font-bold text-positive group-hover:block">{moedaCompacta.format(item.receitas)}</span></span><span className="relative w-[34%] rounded-t-md bg-error/55 transition group-hover:bg-error/80" style={{ height: `${Math.max((item.despesas / maximo) * 100, 2)}%` }}><span className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[.52rem] font-bold text-error group-hover:block">{moedaCompacta.format(item.despesas)}</span></span></button>)}</div>
+      <div className="mt-2 flex gap-1.5 sm:gap-3">{serie.map((item) => <span key={item.chave} className="min-w-0 flex-1 text-center text-[.58rem] font-bold capitalize text-foreground-soft">{mesCurto.format(item.data).replace(".", "")}</span>)}</div>
+    </div>
+  );
+}
+
+function GraficoSaldo({ serie, aoSelecionar }) {
+  const valores = serie.map((item) => item.saldo);
+  const minimo = Math.min(...valores, 0);
+  const maximo = Math.max(...valores, 1);
+  const largura = 600;
+  const altura = 170;
+  const pontos = serie.map((item, indice) => ({ ...item, x: serie.length === 1 ? largura / 2 : (indice / (serie.length - 1)) * largura, y: altura - ((item.saldo - minimo) / Math.max(maximo - minimo, 1)) * (altura - 28) - 14 }));
+  const caminho = pontos.map((ponto, indice) => `${indice ? "L" : "M"} ${ponto.x} ${ponto.y}`).join(" ");
+  const area = `${caminho} L ${largura} ${altura} L 0 ${altura} Z`;
+  return (
+    <div className="mt-6">
+      <svg viewBox={`-8 -8 ${largura + 16} ${altura + 16}`} className="h-44 w-full overflow-visible" preserveAspectRatio="none" aria-label="Evolução do saldo consolidado"><defs><linearGradient id="areaSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#006463" stopOpacity=".22" /><stop offset="1" stopColor="#006463" stopOpacity="0" /></linearGradient></defs><path d={area} fill="url(#areaSaldo)" /><path d={caminho} fill="none" stroke="#006463" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />{pontos.map((ponto) => <circle key={ponto.chave} cx={ponto.x} cy={ponto.y} r="6" fill="#fefefe" stroke="#006463" strokeWidth="3" vectorEffect="non-scaling-stroke" className="cursor-pointer outline-none" role="button" tabIndex="0" aria-label={`${mesLongo.format(ponto.data)}: ${moeda.format(ponto.saldo)}`} onClick={() => aoSelecionar(ponto.chave)} onKeyDown={(evento) => (evento.key === "Enter" || evento.key === " ") && aoSelecionar(ponto.chave)} />)}</svg>
+      <div className="mt-1 flex">{serie.map((item) => <span key={item.chave} className="min-w-0 flex-1 text-center text-[.58rem] font-bold capitalize text-foreground-soft">{mesCurto.format(item.data).replace(".", "")}</span>)}</div>
+    </div>
+  );
+}
+
+function EstadoVazio({ children }) {
+  return <div className="grid min-h-40 place-items-center rounded-xl border border-dashed border-primary/10 bg-primary/[.018] p-6 text-center text-xs leading-5 text-foreground-soft">{children}</div>;
 }
 
 export default function DashboardView() {
+  const agora = useMemo(() => new Date(), []);
+  const mesAtual = chaveMes(agora);
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState("");
+  const [mesReferencia, setMesReferencia] = useState(mesAtual);
+  const [contaId, setContaId] = useState("");
+  const [categoriaId, setCategoriaId] = useState("");
+  const [periodo, setPeriodo] = useState("6");
+  const [taxaMeta, setTaxaMeta] = useState("20");
+  const [janelaRecorrencias, setJanelaRecorrencias] = useState("7");
 
   useEffect(() => { let ativo = true; carregarDashboard().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, []);
 
-  const atual = dados?.historico.at(-1)?.resumo;
-  const anterior = dados?.historico.at(-2)?.resumo;
-  const maiorFluxo = useMemo(() => Math.max(...(dados?.historico ?? []).flatMap((item) => [Number(item.resumo.totalReceitas), Number(item.resumo.totalDespesas)]), 1), [dados]);
-  const maiorSaldo = useMemo(() => Math.max(...(dados?.historico ?? []).map((item) => Math.max(Number(item.resumo.saldoTotal), 0)), 1), [dados]);
-  const taxaEconomia = atual && Number(atual.totalReceitas) > 0 ? (Number(atual.resultadoPeriodo) / Number(atual.totalReceitas)) * 100 : 0;
-  const principalCategoria = atual?.despesasPorCategoria?.[0];
-  const variacaoReceitas = atual && anterior ? variacaoPercentual(atual.totalReceitas, anterior.totalReceitas) : null;
-  const variacaoDespesas = atual && anterior ? variacaoPercentual(atual.totalDespesas, anterior.totalDespesas) : null;
+  const opcoesMes = useMemo(() => mesesAte(mesAtual, 13).reverse().map((item) => ({ valor: item.chave, rotulo: mesLongo.format(item.data) })), [mesAtual]);
+  const categoriasFiltro = useMemo(() => { const mapa = new Map((dados?.transacoes ?? []).map((item) => [String(item.categoriaId), item.categoriaNome])); return [...mapa].sort((a, b) => a[1].localeCompare(b[1], "pt-BR")).map(([valor, rotulo]) => ({ valor, rotulo })); }, [dados]);
+  const analise = useMemo(() => dados ? resumoMes({ ...dados, chave: mesReferencia, contaId, categoriaId, taxaMeta: Number(taxaMeta), hoje: agora }) : null, [dados, mesReferencia, contaId, categoriaId, taxaMeta, agora]);
+  const serie = useMemo(() => dados ? serieMensal({ ...dados, chaveFinal: mesReferencia, quantidade: Number(periodo), contaId, categoriaId }) : [], [dados, mesReferencia, periodo, contaId, categoriaId]);
+  const categorias = useMemo(() => dados && analise ? categoriasDoMes({ transacoes: dados.transacoes, chave: mesReferencia, contaId, categoriaId, receitas: analise.receitas }) : [], [dados, analise, mesReferencia, contaId, categoriaId]);
+  const medias = useMemo(() => dados ? mediasCategorias({ transacoes: dados.transacoes, chave: mesReferencia, contaId }) : new Map(), [dados, mesReferencia, contaId]);
+  const fixo = useMemo(() => dados && analise ? compromissoFixo({ recorrencias: dados.recorrencias, receitas: analise.receitasProjetadas, chave: mesReferencia, contaId, categoriaId }) : { total: 0, percentual: 0 }, [dados, analise, mesReferencia, contaId, categoriaId]);
+  const proximoMes = useMemo(() => dados ? previsaoProximoMes({ recorrencias: dados.recorrencias, chave: mesReferencia, contaId, categoriaId }) : null, [dados, mesReferencia, contaId, categoriaId]);
+  const proximas = useMemo(() => dados ? proximasRecorrencias({ recorrencias: dados.recorrencias, inicio: agora, dias: Number(janelaRecorrencias), contaId, categoriaId }) : [], [dados, agora, janelaRecorrencias, contaId, categoriaId]);
+  const totalCategorias = categorias.reduce((total, item) => total + item.total, 0);
+  const acimaDaMedia = categorias.filter((item) => item.total > (medias.get(item.id) ?? 0) * 1.1 && (medias.get(item.id) ?? 0) > 0);
+  const filtrosAtivos = Boolean(contaId || categoriaId || mesReferencia !== mesAtual);
+  const referencia = opcoesMes.find((item) => item.valor === mesReferencia)?.rotulo ?? mesReferencia;
+
+  function selecionarCategoria(id) { setCategoriaId((atual) => String(atual) === String(id) ? "" : String(id)); }
+  function limparFiltros() { setContaId(""); setCategoriaId(""); setMesReferencia(mesAtual); }
 
   if (erro) return <main className="page-shell"><FeedbackErro mensagem={`${erro} Verifique se o backend está em execução.`} /></main>;
 
   return (
     <main className="page-shell">
-      <header className="flex items-end justify-between gap-4"><div><p className="page-eyebrow capitalize">Relatório financeiro · {mesLongo.format(new Date())}</p><h1 className="page-title">Dashboard</h1><p className="page-description">Indicadores para entender o presente e planejar os próximos passos.</p></div><Link href="/transacoes" className={`${botaoSecundario} hidden sm:inline-flex`}>Ver transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
+      <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="page-eyebrow">Inteligência financeira · {referencia}</p><h1 className="page-title">Dashboard</h1><p className="page-description">O que seu dinheiro está dizendo — hoje, no fim do mês e no próximo ciclo.</p></div><Link href="/transacoes" className={`${botaoSecundario} self-start lg:self-auto`}>Explorar transações <Icone nome="setaDireita" className="size-3.5" /></Link></header>
 
-      {!dados ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]"><div className="h-64 animate-pulse rounded-2xl bg-primary/6" /><div className="paper-card overflow-hidden rounded-2xl"><EsqueletoLista linhas={4} /></div></div> : <>
-        <section className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
-          <article className="paper-card rounded-2xl p-4 sm:p-5">
-            <div className="flex items-start justify-between"><div><p className="text-xs font-bold text-foreground-soft">Patrimônio</p><p className="mt-2 text-3xl font-extrabold tracking-[-.04em] text-primary sm:text-4xl">{moeda.format(atual.saldoTotal)}</p></div><span className="rounded-full bg-primary/6 px-3 py-1.5 text-[.65rem] font-bold capitalize text-primary">{mesLongo.format(new Date())}</span></div>
-            <div className="mt-6 flex h-28 items-end gap-2 border-b border-primary/8 px-1 sm:h-36">{dados.historico.map((item, indice) => <div key={item.inicio} className="group flex h-full flex-1 items-end"><div className={`relative w-full rounded-t-md transition ${indice === dados.historico.length - 1 ? "bg-primary" : "bg-secondary/18 group-hover:bg-secondary/30"}`} style={{ height: `${Math.max((Math.max(Number(item.resumo.saldoTotal), 0) / maiorSaldo) * 100, 5)}%` }}><span className="absolute -top-5 left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[.55rem] font-bold text-primary group-hover:block">{moeda.format(item.resumo.saldoTotal)}</span></div></div>)}</div>
-            <div className="mt-2 grid grid-cols-6">{dados.historico.map((item) => <span key={item.inicio} className="text-center text-[.58rem] font-semibold capitalize text-foreground-soft">{mesCurto.format(item.data).replace(".", "")}</span>)}</div>
-          </article>
+      <section className="mt-5 rounded-2xl border border-primary/8 bg-white/65 p-3 shadow-[var(--shadow-soft)] backdrop-blur-sm" aria-label="Filtros do dashboard">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto_auto] xl:items-center"><SelectCampo valor={mesReferencia} aoAlterar={setMesReferencia} opcoes={opcoesMes} rotulo="Mês de referência" obrigatorio /><SelectCampo valor={contaId} aoAlterar={setContaId} opcoes={(dados?.contas ?? []).map((conta) => ({ valor: String(conta.id), rotulo: conta.nome }))} rotulo="Filtrar por conta" placeholder="Todas as contas" /><SelectCampo valor={categoriaId} aoAlterar={setCategoriaId} opcoes={categoriasFiltro} rotulo="Filtrar por categoria" placeholder="Todas as categorias" /><FiltroSegmentado valor={periodo} aoAlterar={setPeriodo} rotulo="Período da tendência" opcoes={[{ valor: "6", rotulo: "6 meses" }, { valor: "12", rotulo: "12 meses" }]} /><SelectCampo valor={taxaMeta} aoAlterar={setTaxaMeta} opcoes={[{ valor: "10", rotulo: "Poupar 10%" }, { valor: "20", rotulo: "Poupar 20%" }, { valor: "30", rotulo: "Poupar 30%" }]} rotulo="Referência de poupança" obrigatorio /></div>
+        {filtrosAtivos && <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-primary/6 pt-3"><span className="text-[.65rem] font-bold text-foreground-soft">Visão filtrada</span>{contaId && <button type="button" onClick={() => setContaId("")} className="rounded-full bg-primary/6 px-2.5 py-1 text-[.62rem] font-bold text-primary">{dados?.contas.find((item) => String(item.id) === contaId)?.nome} ×</button>}{categoriaId && <button type="button" onClick={() => setCategoriaId("")} className="rounded-full bg-primary/6 px-2.5 py-1 text-[.62rem] font-bold text-primary">{categoriasFiltro.find((item) => item.valor === categoriaId)?.rotulo} ×</button>}{mesReferencia !== mesAtual && <button type="button" onClick={() => setMesReferencia(mesAtual)} className="rounded-full bg-primary/6 px-2.5 py-1 text-[.62rem] font-bold capitalize text-primary">{referencia} ×</button>}<button type="button" onClick={limparFiltros} className="ml-auto text-[.65rem] font-extrabold text-secondary underline decoration-secondary/25 underline-offset-4">Limpar filtros</button></div>}
+      </section>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-            {dados.contas.slice(0, 4).map((conta, indice) => <Link href="/contas" key={conta.id} className={`${coresContas[indice % coresContas.length]} flex min-h-32 flex-col justify-between rounded-2xl p-4 transition hover:-translate-y-0.5`}><div className="flex items-start justify-between gap-2"><span className="grid size-8 place-items-center rounded-lg bg-white/70 text-primary"><Icone nome="carteira" className="size-4" /></span><Icone nome="setaDireita" className="size-3.5 text-primary/50" /></div><div><p className="truncate text-xs font-bold text-primary">{conta.nome}</p><p className="mt-1 truncate text-base font-extrabold text-primary sm:text-lg">{moeda.format(conta.saldoAtual)}</p></div></Link>)}
-            {!dados.contas.length && <div className="col-span-2 grid min-h-64 place-items-center rounded-2xl border border-dashed border-primary/15 bg-white/60 p-6 text-center"><div><p className="font-bold text-primary">Nenhuma conta cadastrada</p><Link href="/contas" className="mt-2 inline-block text-xs font-bold text-secondary">Criar conta</Link></div></div>}
-          </div>
+      {!dados || !analise ? <div className="mt-5 grid gap-4 lg:grid-cols-4"><div className="h-44 animate-pulse rounded-2xl bg-primary/6 lg:col-span-2" /><div className="paper-card overflow-hidden rounded-2xl lg:col-span-2"><EsqueletoLista linhas={3} /></div></div> : <>
+        <section className="mt-6"><div className="mb-3 flex items-end justify-between gap-3"><div><p className="text-[.65rem] font-extrabold uppercase tracking-[.14em] text-secondary">Leitura de 3 segundos</p><h2 className="mt-1 text-lg font-extrabold tracking-[-.025em] text-primary">Sua posição agora</h2></div><p className="hidden text-[.65rem] text-foreground-soft sm:block">Clique em gráficos e categorias para cruzar a análise.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><CartaoMetrica rotulo={analise.mesAtual ? "Saldo consolidado" : `Saldo em ${dataCurta.format(analise.corte)}`} valor={moeda.format(analise.saldo)} detalhe={contaId ? "Na conta selecionada" : `${dados.contas.length} ${dados.contas.length === 1 ? "conta considerada" : "contas consideradas"}`} icone="carteira" destaque /><CartaoMetrica rotulo="Gasto no mês" valor={moeda.format(analise.despesas)} detalhe={`de ${moeda.format(analise.receitas)} recebidos`} icone="setaBaixo" tom="negativo" /><CartaoMetrica rotulo="Resultado" valor={moeda.format(analise.resultado)} detalhe="Receitas menos despesas realizadas" icone="transacoes" tom={analise.resultado >= 0 ? "positivo" : "negativo"} /><CartaoMetrica rotulo="Taxa de poupança" valor={percentual(analise.taxaPoupanca)} detalhe={`Referência escolhida: ${taxaMeta}%`} icone="grafico" tom={analise.taxaPoupanca >= Number(taxaMeta) ? "positivo" : "negativo"} /></div></section>
+
+        <section className="mt-5 grid gap-4 xl:grid-cols-[1.12fr_.88fr]">
+          <article className="relative overflow-hidden rounded-2xl bg-[#102d28] p-5 text-white shadow-[0_20px_50px_rgba(0,58,48,.16)] sm:p-6"><div className="absolute -right-20 -top-28 size-72 rounded-full border border-white/8" /><div className="absolute -right-8 -top-16 size-52 rounded-full border border-white/8" /><div className="relative grid gap-7 md:grid-cols-[1.05fr_.95fr] md:items-end"><div><p className="text-[.65rem] font-extrabold uppercase tracking-[.14em] text-white/45">Posso gastar mais?</p><p className={`mt-3 text-3xl font-extrabold tracking-[-.045em] sm:text-4xl ${analise.margemLivre >= 0 ? "text-[#a7dfc5]" : "text-[#f3ad9e]"}`}>{moeda.format(Math.abs(analise.margemLivre))}</p><p className="mt-2 max-w-md text-xs leading-5 text-white/60">{analise.margemLivre >= 0 ? `de margem estimada, preservando ${taxaMeta}% da receita projetada.` : `faltariam para encerrar o mês preservando ${taxaMeta}% da receita projetada.`}</p></div><div className="rounded-xl border border-white/8 bg-white/[.055] p-4"><div className="flex items-center justify-between text-[.65rem]"><span className="text-white/55">Despesa realizada</span><strong>{moeda.format(analise.despesas)}</strong></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#d7aa68]" style={{ width: `${Math.min((analise.despesas / Math.max(analise.despesasProjetadas, 1)) * 100, 100)}%` }} /></div><div className="mt-3 flex items-center justify-between text-[.65rem]"><span className="text-white/55">Fechamento projetado</span><strong>{moeda.format(analise.despesasProjetadas)}</strong></div></div></div></article>
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-[.65rem] font-extrabold uppercase tracking-[.12em] text-foreground-soft">Ritmo do mês</p><h2 className="mt-1.5 text-lg font-extrabold text-primary">No ritmo atual</h2></div><span className={`rounded-full px-2.5 py-1 text-[.62rem] font-extrabold ${analise.resultadoProjetado >= 0 ? "bg-positive/8 text-positive" : "bg-error/8 text-error"}`}>{analise.resultadoProjetado >= 0 ? "Superávit previsto" : "Déficit previsto"}</span></div><div className="mt-6 grid grid-cols-2 gap-5"><div><p className="text-[.65rem] text-foreground-soft">Despesa projetada</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(analise.despesasProjetadas)}</p></div><div><p className="text-[.65rem] text-foreground-soft">Saldo ao fechar</p><p className={`mt-1 text-lg font-extrabold ${tomValor(analise.saldoProjetado)}`}>{moeda.format(analise.saldoProjetado)}</p></div></div><BarraProgresso valor={analise.despesas} limite={analise.despesasProjetadas} cor="bg-secondary" className="mt-5" /><p className="mt-3 text-[.65rem] leading-5 text-foreground-soft">A projeção considera o ritmo diário e garante, no mínimo, as recorrências que ainda vencem no mês.</p></article>
         </section>
 
-        <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <CardKpi rotulo="Receitas" valor={moeda.format(atual.totalReceitas)} detalhe={variacaoReceitas === null ? "No mês atual" : `${variacaoReceitas >= 0 ? "+" : ""}${variacaoReceitas.toFixed(1)}% ante o mês anterior`} tom="positivo" />
-          <CardKpi rotulo="Despesas" valor={moeda.format(atual.totalDespesas)} detalhe={variacaoDespesas === null ? "No mês atual" : `${variacaoDespesas >= 0 ? "+" : ""}${variacaoDespesas.toFixed(1)}% ante o mês anterior`} tom="negativo" />
-          <CardKpi rotulo="Resultado" valor={moeda.format(atual.resultadoPeriodo)} detalhe="Receitas menos despesas" tom={Number(atual.resultadoPeriodo) >= 0 ? "positivo" : "negativo"} />
-          <CardKpi rotulo="Taxa de economia" valor={`${taxaEconomia.toFixed(1)}%`} detalhe="Do que entrou no mês" tom={taxaEconomia >= 0 ? "positivo" : "negativo"} />
+        <section className="mt-5 grid gap-4 xl:grid-cols-[.78fr_1.22fr]">
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-extrabold text-primary">Próximos compromissos</h2><p className="mt-1 text-[.68rem] text-foreground-soft">O que já está previsto para cair.</p></div><FiltroSegmentado valor={janelaRecorrencias} aoAlterar={setJanelaRecorrencias} rotulo="Janela de recorrências" opcoes={[{ valor: "7", rotulo: "7 dias" }, { valor: "30", rotulo: "30 dias" }]} /></div><div className="mt-5 divide-y divide-primary/6">{proximas.slice(0, 5).map((item, indice) => <div key={`${item.id}-${item.dataOcorrencia}-${indice}`} className="flex items-center gap-3 py-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl text-[.62rem] font-extrabold ${item.tipo === "RECEITA" ? "bg-positive/9 text-positive" : "bg-error/8 text-error"}`}>{String(item.dataOcorrencia.getDate()).padStart(2, "0")}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-extrabold text-primary">{item.descricao}</p><p className="mt-0.5 truncate text-[.6rem] text-foreground-soft">{item.contaNome} · {dataCurta.format(item.dataOcorrencia)}</p></div><strong className={`whitespace-nowrap text-xs ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}>{item.tipo === "RECEITA" ? "+" : "−"}{moeda.format(item.valor)}</strong></div>)}{!proximas.length && <EstadoVazio>Nenhuma recorrência ativa nesta janela.</EstadoVazio>}</div><Link href="/recorrencias" className="mt-4 flex items-center justify-between text-[.68rem] font-extrabold text-secondary">Gerenciar recorrências <Icone nome="setaDireita" className="size-3.5" /></Link></article>
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-extrabold text-primary">Comprometimento fixo</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Quanto da receita projetada já tem destino.</p></div><p className="text-2xl font-extrabold tracking-[-.04em] text-primary">{percentual(fixo.percentual)}</p></div><BarraProgresso valor={fixo.percentual} limite={100} cor={fixo.percentual > 60 ? "bg-error" : "bg-secondary"} className="mt-5 h-2" /><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Fixos previstos</p><p className="mt-1 text-sm font-extrabold text-primary">{moeda.format(fixo.total)}</p></div><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Receita projetada</p><p className="mt-1 text-sm font-extrabold text-positive">{moeda.format(analise.receitasProjetadas)}</p></div><div className="rounded-xl bg-primary/[.035] p-4"><p className="text-[.62rem] text-foreground-soft">Resultado projetado</p><p className={`mt-1 text-sm font-extrabold ${tomValor(analise.resultadoProjetado)}`}>{moeda.format(analise.resultadoProjetado)}</p></div></div><p className="mt-5 text-[.65rem] leading-5 text-foreground-soft">Quanto menor o comprometimento fixo, maior sua margem para absorver imprevistos e ajustar escolhas durante o mês.</p></article>
         </section>
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
-          <article className="paper-card overflow-hidden rounded-2xl">
-            <header className="border-b border-primary/7 px-4 py-4 sm:px-5"><h2 className="text-sm font-extrabold text-primary sm:text-base">Fluxo financeiro</h2><p className="mt-0.5 text-[.68rem] text-foreground-soft sm:text-xs">Receitas e despesas nos últimos seis meses</p></header>
-            <div className="px-4 py-4 sm:px-5">{dados.historico.map((item) => <div key={item.inicio} className="grid grid-cols-[2.7rem_1fr] items-center gap-3 border-b border-primary/6 py-3 last:border-0"><span className="text-xs font-bold capitalize text-primary">{mesCurto.format(item.data).replace(".", "")}</span><div className="space-y-1.5"><div className="flex items-center gap-2"><div className="h-1.5 rounded-full bg-positive" style={{ width: `${Math.max((Number(item.resumo.totalReceitas) / maiorFluxo) * 100, 1)}%` }} /><span className="whitespace-nowrap text-[.58rem] font-semibold text-positive">{moeda.format(item.resumo.totalReceitas)}</span></div><div className="flex items-center gap-2"><div className="h-1.5 rounded-full bg-error/70" style={{ width: `${Math.max((Number(item.resumo.totalDespesas) / maiorFluxo) * 100, 1)}%` }} /><span className="whitespace-nowrap text-[.58rem] font-semibold text-error">{moeda.format(item.resumo.totalDespesas)}</span></div></div></div>)}</div>
-          </article>
-
-          <article className="overflow-hidden rounded-2xl bg-[#17201e] p-5 text-white shadow-[0_14px_35px_rgba(0,0,0,.1)]">
-            <p className="text-[.65rem] font-bold uppercase tracking-[.14em] text-white/40">Leitura do mês</p><h2 className="mt-3 text-xl font-extrabold">Seu resultado em contexto.</h2>
-            <div className="mt-6 border-t border-white/10 pt-5"><p className="text-xs text-white/45">Taxa de economia</p><p className={`mt-1 text-3xl font-extrabold ${taxaEconomia >= 0 ? "text-[#89ddb8]" : "text-[#f0a58e]"}`}>{taxaEconomia.toFixed(1)}%</p><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#89ddb8]" style={{ width: `${Math.min(Math.max(taxaEconomia, 0), 100)}%` }} /></div></div>
-            <div className="mt-6 rounded-xl bg-white/6 p-4"><p className="text-[.65rem] font-bold uppercase tracking-wider text-white/35">Maior categoria de despesa</p><p className="mt-2 truncate text-sm font-bold">{principalCategoria?.categoriaNome ?? "Sem despesas no período"}</p>{principalCategoria && <p className="mt-1 text-lg font-extrabold text-[#f0c98a]">{moeda.format(principalCategoria.total)}</p>}</div>
-            <Link href="/categorias" className="mt-5 flex items-center justify-between text-xs font-bold text-white/70">Ver composição completa <Icone nome="setaDireita" className="size-3.5" /></Link>
-          </article>
+        <section className="mt-5 grid gap-4 2xl:grid-cols-[.75fr_1.25fr]">
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div><h2 className="text-base font-extrabold text-primary">Onde você mais gasta</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Top 5 categorias em valor e participação na receita.</p></div>{categorias.length ? <><RoscaCategorias itens={categorias.slice(0, 6)} total={totalCategorias} selecionada={categoriaId} aoSelecionar={selecionarCategoria} /><div className="mt-3 space-y-1">{categorias.slice(0, 5).map((item, indice) => <button key={item.id} type="button" onClick={() => selecionarCategoria(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-primary/[.035] ${String(categoriaId) === item.id ? "bg-primary/[.055] ring-1 ring-primary/10" : ""}`}><span className="size-2.5 shrink-0 rounded-full" style={{ background: CORES[indice % CORES.length] }} /><span className="min-w-0 flex-1 truncate text-xs font-bold text-primary">{item.nome}</span><span className="text-[.65rem] text-foreground-soft">{percentual(item.percentualReceita)} da receita</span><strong className="w-24 text-right text-xs text-primary">{moeda.format(item.total)}</strong></button>)}</div></> : <div className="mt-5"><EstadoVazio>Nenhuma despesa encontrada para os filtros selecionados.</EstadoVazio></div>}</article>
+          <article className="paper-card overflow-hidden rounded-2xl"><header className="border-b border-primary/7 px-5 py-5 sm:px-6"><h2 className="text-base font-extrabold text-primary">Fora do padrão?</h2><p className="mt-1 text-[.68rem] text-foreground-soft">O mês selecionado comparado à média dos três anteriores.</p></header><div className="divide-y divide-primary/6">{categorias.slice(0, 6).map((item) => { const media = medias.get(item.id) ?? 0; const delta = media > 0 ? ((item.total - media) / media) * 100 : null; return <button key={item.id} type="button" onClick={() => selecionarCategoria(item.id)} className="grid w-full grid-cols-[1fr_auto] items-center gap-4 px-5 py-4 text-left transition hover:bg-primary/[.025] sm:grid-cols-[1fr_9rem_7rem] sm:px-6"><div className="min-w-0"><p className="truncate text-xs font-extrabold text-primary">{item.nome}</p><div className="mt-2 max-w-xs"><BarraProgresso valor={item.total} limite={Math.max(item.total, media, 1)} cor={delta !== null && delta > 10 ? "bg-error/70" : "bg-secondary"} /></div></div><div className="hidden text-right sm:block"><p className="text-[.58rem] text-foreground-soft">média de 3 meses</p><p className="mt-0.5 text-xs font-bold text-primary">{moeda.format(media)}</p></div><div className="text-right"><p className="text-xs font-extrabold text-primary">{moeda.format(item.total)}</p><p className={`mt-1 text-[.6rem] font-extrabold ${delta === null ? "text-foreground-soft" : delta > 10 ? "text-error" : "text-positive"}`}>{delta === null ? "sem histórico" : `${delta >= 0 ? "+" : ""}${percentual(delta)}`}</p></div></button>; })}{!categorias.length && <div className="p-5"><EstadoVazio>O comparativo aparecerá quando houver despesas no período.</EstadoVazio></div>}</div></article>
         </section>
+
+        <section className="mt-5 grid gap-4 xl:grid-cols-2">
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-extrabold text-primary">Receita × despesa</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Clique em um mês para levar o relatório até ele.</p></div><div className="flex gap-3 text-[.58rem] font-bold text-foreground-soft"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-positive" />Receita</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error/65" />Despesa</span></div></div><GraficoFluxo serie={serie} selecionado={mesReferencia} aoSelecionar={setMesReferencia} /></article>
+          <article className="paper-card rounded-2xl p-5 sm:p-6"><div><h2 className="text-base font-extrabold text-primary">Evolução do saldo</h2><p className="mt-1 text-[.68rem] text-foreground-soft">Patrimônio consolidado ao fim de cada mês.</p></div><GraficoSaldo serie={serie} aoSelecionar={setMesReferencia} /></article>
+        </section>
+
+        <section className="mt-5 rounded-2xl border border-primary/8 bg-[#ebe4d8]/70 p-5 sm:p-6"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-[.65rem] font-extrabold uppercase tracking-[.13em] text-accent">Sinais de atenção</p><h2 className="mt-1 text-lg font-extrabold text-primary">O que merece uma decisão</h2></div><p className="max-w-md text-[.65rem] leading-5 text-foreground-soft">São referências calculadas pelo painel, não metas salvas. O módulo de metas virá em uma etapa própria.</p></div><div className="mt-5 grid gap-3 md:grid-cols-3"><div className="rounded-xl bg-white/70 p-4"><span className={`grid size-8 place-items-center rounded-full ${analise.taxaPoupanca >= Number(taxaMeta) ? "bg-positive/10 text-positive" : "bg-error/9 text-error"}`}><Icone nome={analise.taxaPoupanca >= Number(taxaMeta) ? "check" : "grafico"} className="size-4" /></span><p className="mt-3 text-xs font-extrabold text-primary">Poupança de referência</p><p className="mt-1 text-[.65rem] leading-5 text-foreground-soft">{analise.taxaPoupanca >= Number(taxaMeta) ? `Você está acima dos ${taxaMeta}% escolhidos.` : `Faltam ${percentual(Number(taxaMeta) - analise.taxaPoupanca)} para a referência de ${taxaMeta}%.`}</p></div><div className="rounded-xl bg-white/70 p-4"><span className={`grid size-8 place-items-center rounded-full ${acimaDaMedia.length ? "bg-error/9 text-error" : "bg-positive/10 text-positive"}`}><Icone nome="categorias" className="size-4" /></span><p className="mt-3 text-xs font-extrabold text-primary">Gastos fora do padrão</p><p className="mt-1 text-[.65rem] leading-5 text-foreground-soft">{acimaDaMedia.length ? `${acimaDaMedia.slice(0, 2).map((item) => item.nome).join(" e ")} ${acimaDaMedia.length > 2 ? `e mais ${acimaDaMedia.length - 2}` : ""} passaram 10% da média.` : "Nenhuma categoria passou 10% da média recente."}</p></div><div className="rounded-xl bg-white/70 p-4"><span className={`grid size-8 place-items-center rounded-full ${proximoMes?.necessidade ? "bg-error/9 text-error" : "bg-positive/10 text-positive"}`}><Icone nome="calendario" className="size-4" /></span><p className="mt-3 text-xs font-extrabold text-primary">{proximoMes ? mesLongo.format(proximoMes.referencia) : "Próximo ciclo"}</p><p className="mt-1 text-[.65rem] leading-5 text-foreground-soft">{proximoMes?.necessidade ? `As despesas fixas superam as receitas fixas em ${moeda.format(proximoMes.necessidade)}. Esse valor precisará vir de renda adicional ou do saldo.` : `As receitas recorrentes cobrem os ${moeda.format(proximoMes?.despesas ?? 0)} já previstos para o mês.`}</p></div></div></section>
       </>}
     </main>
   );
