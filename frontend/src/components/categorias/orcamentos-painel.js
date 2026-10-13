@@ -48,7 +48,7 @@ function EstadoOrcamento({ item }) {
     ? { texto: "Limite excedido", classe: "bg-error/9 text-error" }
     : item.status === "ATENCAO"
       ? { texto: "Atenção", classe: "bg-[#d39a52]/12 text-[#8a5a1e]" }
-      : { texto: "No limite", classe: "bg-positive/9 text-positive" };
+      : { texto: "Dentro do limite", classe: "bg-positive/9 text-positive" };
   return <span className={`rounded-full px-2.5 py-1 text-[.6rem] font-extrabold ${configuracao.classe}`}>{configuracao.texto}</span>;
 }
 
