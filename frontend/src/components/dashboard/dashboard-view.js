@@ -107,9 +107,12 @@ export default function DashboardView() {
   const [taxaMeta, setTaxaMeta] = useState("20");
   const [janelaRecorrencias, setJanelaRecorrencias] = useState("7");
   const [orcamentos, setOrcamentos] = useState([]);
+  const [cartoesCredito, setCartoesCredito] = useState([]);
+  const [faturasCartao, setFaturasCartao] = useState([]);
 
   useEffect(() => { let ativo = true; carregarDashboard().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, []);
   useEffect(() => { let ativo = true; apiFetch(`/orcamentos?mesReferencia=${mesReferencia}-01`).then((resultado) => ativo && setOrcamentos(resultado)).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, [mesReferencia]);
+  useEffect(() => { let ativo = true; apiFetch("/cartoes").then(async (cartoes) => ({ cartoes, faturas: await Promise.all(cartoes.map((cartao) => apiFetch(`/cartoes/${cartao.id}/faturas?mesReferencia=${mesReferencia}-01&meses=6`))) })).then((resultado) => { if (ativo) { setCartoesCredito(resultado.cartoes); setFaturasCartao(resultado.faturas); } }).catch((error) => ativo && setErro(error.message)); return () => { ativo = false; }; }, [mesReferencia]);
 
   const categoriasFiltro = useMemo(() => { const mapa = new Map((dados?.transacoes ?? []).map((item) => [String(item.categoriaId), item.categoriaNome])); return [...mapa].sort((a, b) => a[1].localeCompare(b[1], "pt-BR")).map(([valor, rotulo]) => ({ valor, rotulo })); }, [dados]);
   const analise = useMemo(() => dados ? resumoMes({ ...dados, chave: mesReferencia, contaId, categoriaId, taxaMeta: Number(taxaMeta), hoje: agora }) : null, [dados, mesReferencia, contaId, categoriaId, taxaMeta, agora]);
@@ -123,6 +126,14 @@ export default function DashboardView() {
   const orcamentosFiltrados = categoriaId ? orcamentos.filter((item) => String(item.categoriaId) === categoriaId) : orcamentos;
   const resumoOrcamentos = orcamentosFiltrados.reduce((total, item) => ({ limite: total.limite + Number(item.valorLimite), gasto: total.gasto + Number(item.gastoRealizado) }), { limite: 0, gasto: 0 });
   const orcamentosEstourados = orcamentosFiltrados.filter((item) => item.status === "ESTOURADO");
+  const cartoesVisiveis = contaId ? cartoesCredito.filter((item) => String(item.contaPagamentoId) === contaId) : cartoesCredito;
+  const idsCartoesVisiveis = new Set(cartoesVisiveis.map((item) => item.id));
+  const faturasVisiveis = faturasCartao.filter((grupo) => grupo[0] && idsCartoesVisiveis.has(grupo[0].cartaoId));
+  const resumoCartoes = cartoesVisiveis.reduce((total, cartao) => ({ limite: total.limite + Number(cartao.limiteTotal), utilizado: total.utilizado + Number(cartao.limiteUtilizado) }), { limite: 0, utilizado: 0 });
+  const faturaCartaoAtual = faturasVisiveis.reduce((total, grupo) => total + Number(grupo[0]?.total ?? 0), 0);
+  const totalParceladoCartao = faturasVisiveis.reduce((total, grupo) => total + grupo.reduce((soma, fatura) => soma + Number(fatura.total), 0), 0);
+  const projecaoCartoes = Array.from({ length: 6 }, (_, indice) => ({ mes: faturasVisiveis[0]?.[indice]?.mesReferencia, total: faturasVisiveis.reduce((soma, grupo) => soma + Number(grupo[indice]?.total ?? 0), 0) }));
+  const maiorFaturaProjetada = Math.max(...projecaoCartoes.map((item) => item.total), 1);
   const filtrosAtivos = Boolean(contaId || categoriaId || mesReferencia !== mesAtual);
   const [anoReferencia, numeroMesReferencia] = mesReferencia.split("-").map(Number);
   const dataReferencia = new Date(anoReferencia, numeroMesReferencia - 1, 1, 12);
@@ -138,9 +149,12 @@ export default function DashboardView() {
     setErro("");
     setDados(null);
     try {
-      const [dadosAtualizados, orcamentosAtualizados] = await Promise.all([carregarDashboard(), apiFetch(`/orcamentos?mesReferencia=${mesReferencia}-01`)]);
+      const [dadosAtualizados, orcamentosAtualizados, cartoesAtualizados] = await Promise.all([carregarDashboard(), apiFetch(`/orcamentos?mesReferencia=${mesReferencia}-01`), apiFetch("/cartoes")]);
+      const faturasAtualizadas = await Promise.all(cartoesAtualizados.map((cartao) => apiFetch(`/cartoes/${cartao.id}/faturas?mesReferencia=${mesReferencia}-01&meses=6`)));
       setDados(dadosAtualizados);
       setOrcamentos(orcamentosAtualizados);
+      setCartoesCredito(cartoesAtualizados);
+      setFaturasCartao(faturasAtualizadas);
     } catch (error) {
       setErro(error.message);
     }
@@ -178,6 +192,11 @@ export default function DashboardView() {
         <section className="paper-card mt-5 overflow-hidden rounded-2xl">
           <header className="flex items-center justify-between gap-4 border-b border-primary/7 px-5 py-4 sm:px-6"><div><h2 className="text-base font-extrabold text-primary">Orçamento × realizado</h2><p className="mt-0.5 text-xs text-foreground-soft">Limites definidos para {referencia.toLowerCase()}.</p></div><Link href="/categorias" className="shrink-0 text-xs font-extrabold text-secondary">Gerenciar</Link></header>
           {orcamentosFiltrados.length ? <><div className="grid border-b border-primary/7 sm:grid-cols-3 sm:divide-x sm:divide-primary/7"><div className="px-5 py-4 sm:px-6"><p className="text-xs text-foreground-soft">Planejado</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(resumoOrcamentos.limite)}</p></div><div className="border-t border-primary/7 px-5 py-4 sm:border-t-0 sm:px-6"><p className="text-xs text-foreground-soft">Realizado</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(resumoOrcamentos.gasto)}</p></div><div className="border-t border-primary/7 px-5 py-4 sm:border-t-0 sm:px-6"><p className="text-xs text-foreground-soft">Disponível</p><p className={`mt-1 text-lg font-extrabold ${tomValor(resumoOrcamentos.limite - resumoOrcamentos.gasto)}`}>{moeda.format(resumoOrcamentos.limite - resumoOrcamentos.gasto)}</p></div></div><div className="grid gap-x-8 px-5 py-3 sm:grid-cols-2 sm:px-6">{orcamentosFiltrados.slice(0, 6).map((item) => <div key={item.id} className="py-3"><div className="flex items-center justify-between gap-3"><span className="truncate text-xs font-extrabold text-primary">{item.categoriaNome}</span><span className={`text-[.62rem] font-extrabold ${item.status === "ESTOURADO" ? "text-error" : item.status === "ATENCAO" ? "text-[#8a5a1e]" : "text-positive"}`}>{Number(item.percentualUtilizado).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-primary/7"><div className={`h-full rounded-full transition-all duration-500 ${item.status === "ESTOURADO" ? "bg-error" : item.status === "ATENCAO" ? "bg-[#d39a52]" : "bg-secondary"}`} style={{ width: `${Math.min(Number(item.percentualUtilizado), 100)}%` }} /></div></div>)}</div></> : <EstadoVazio icone="grafico" titulo="Nenhum orçamento neste mês" descricao="Defina limites nas categorias para comparar o planejado ao realizado." acao={<Link href="/categorias" className={botaoSecundario}>Abrir categorias</Link>} />}
+        </section>
+
+        <section className="paper-card mt-5 overflow-hidden rounded-2xl">
+          <header className="flex items-center justify-between gap-4 border-b border-primary/7 px-5 py-4 sm:px-6"><div><h2 className="text-base font-extrabold text-primary">Cartões de crédito</h2><p className="mt-0.5 text-xs text-foreground-soft">Fatura atual, limite e parcelas já comprometidas.</p></div><Link href="/cartoes" className="shrink-0 text-xs font-extrabold text-secondary">Gerenciar</Link></header>
+          {cartoesVisiveis.length ? <><div className="grid border-b border-primary/7 sm:grid-cols-3 sm:divide-x sm:divide-primary/7"><div className="px-5 py-4 sm:px-6"><p className="text-xs text-foreground-soft">Fatura do mês</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(faturaCartaoAtual)}</p></div><div className="border-t border-primary/7 px-5 py-4 sm:border-t-0 sm:px-6"><p className="text-xs text-foreground-soft">Limite utilizado</p><p className="mt-1 text-lg font-extrabold text-primary">{percentual((resumoCartoes.utilizado / Math.max(resumoCartoes.limite, 1)) * 100)}</p><p className="mt-0.5 text-[.6rem] text-foreground-soft">{moeda.format(resumoCartoes.utilizado)} de {moeda.format(resumoCartoes.limite)}</p></div><div className="border-t border-primary/7 px-5 py-4 sm:border-t-0 sm:px-6"><p className="text-xs text-foreground-soft">Próximas 6 faturas</p><p className="mt-1 text-lg font-extrabold text-primary">{moeda.format(totalParceladoCartao)}</p></div></div><div className="grid gap-3 px-5 py-5 sm:grid-cols-3 lg:grid-cols-6 sm:px-6">{projecaoCartoes.map((item, indice) => <button type="button" key={item.mes ?? indice} onClick={() => item.mes && setMesReferencia(item.mes.slice(0, 7))} className="interactive-row rounded-xl px-3 py-3 text-left"><span className="text-[.6rem] font-bold capitalize text-foreground-soft">{item.mes ? mesCurto.format(new Date(`${item.mes}T12:00:00`)).replace(".", "") : "—"}</span><strong className="mt-1 block text-xs text-primary">{moeda.format(item.total)}</strong><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-primary/7"><div className="h-full rounded-full bg-[#d39a52] transition-all duration-500" style={{ width: `${(item.total / maiorFaturaProjetada) * 100}%` }} /></div></button>)}</div></> : <EstadoVazio icone="cartoes" titulo={contaId ? "Nenhum cartão ligado a esta conta" : "Nenhum cartão cadastrado"} descricao="Cadastre seus cartões para acompanhar faturas e parcelas futuras." acao={!contaId && <Link href="/cartoes" className={botaoSecundario}>Cadastrar cartão</Link>} />}
         </section>
 
         <section className="mt-5 grid gap-4 xl:grid-cols-2">
