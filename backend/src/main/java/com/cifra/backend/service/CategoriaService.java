@@ -47,6 +47,10 @@ public class CategoriaService {
     @Transactional
     public CategoriaResponse atualizar(Long id, CategoriaRequest request) {
         Categoria categoria = buscarEntidade(id);
+        if (request.tipo() != categoria.getTipo()
+                && orcamentoRepository.existsByCategoriaId(id)) {
+            throw new RegraNegocioException("A categoria possui orçamentos e deve continuar como despesa");
+        }
         atualizarDados(categoria, request);
         return paraResponse(categoriaRepository.save(categoria));
     }

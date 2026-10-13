@@ -14,5 +14,4 @@ public interface OrcamentoCategoriaRepository extends JpaRepository<OrcamentoCat
 
     boolean existsByCategoriaId(Long categoriaId);
 
-    void deleteByCategoriaId(Long categoriaId);
 }

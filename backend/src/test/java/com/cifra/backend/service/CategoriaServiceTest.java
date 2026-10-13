@@ -85,6 +85,20 @@ class CategoriaServiceTest {
     }
 
     @Test
+    void deveImpedirMudancaDeTipoComOrcamentoVinculado() {
+        Categoria categoria = categoria(1L, "Mercado", TipoOperacao.DESPESA);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(orcamentoRepository.existsByCategoriaId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoriaService.atualizar(
+                1L,
+                new CategoriaRequest("Mercado", TipoOperacao.RECEITA)
+        ))
+                .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
+                .hasMessage("A categoria possui orçamentos e deve continuar como despesa");
+    }
+
+    @Test
     void deveExcluirCategoriaExistente() {
         Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
