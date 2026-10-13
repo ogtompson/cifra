@@ -3,8 +3,10 @@ package com.cifra.backend.service;
 import com.cifra.backend.dto.CategoriaRequest;
 import com.cifra.backend.dto.CategoriaResponse;
 import com.cifra.backend.exception.RecursoNaoEncontradoException;
+import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.model.Categoria;
 import com.cifra.backend.repository.CategoriaRepository;
+import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +17,11 @@ import java.util.List;
 public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
+    private final OrcamentoCategoriaRepository orcamentoRepository;
 
-    public CategoriaService(CategoriaRepository categoriaRepository) {
+    public CategoriaService(CategoriaRepository categoriaRepository, OrcamentoCategoriaRepository orcamentoRepository) {
         this.categoriaRepository = categoriaRepository;
+        this.orcamentoRepository = orcamentoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +53,11 @@ public class CategoriaService {
 
     @Transactional
     public void excluir(Long id) {
-        categoriaRepository.delete(buscarEntidade(id));
+        Categoria categoria = buscarEntidade(id);
+        if (orcamentoRepository.existsByCategoriaId(id)) {
+            throw new RegraNegocioException("A categoria possui orçamentos vinculados e não pode ser excluída");
+        }
+        categoriaRepository.delete(categoria);
     }
 
     private Categoria buscarEntidade(Long id) {

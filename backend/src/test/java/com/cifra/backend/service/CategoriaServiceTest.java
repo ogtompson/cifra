@@ -6,6 +6,7 @@ import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Categoria;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.CategoriaRepository;
+import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,12 +28,14 @@ class CategoriaServiceTest {
 
     @Mock
     private CategoriaRepository categoriaRepository;
+    @Mock
+    private OrcamentoCategoriaRepository orcamentoRepository;
 
     private CategoriaService categoriaService;
 
     @BeforeEach
     void configurar() {
-        categoriaService = new CategoriaService(categoriaRepository);
+        categoriaService = new CategoriaService(categoriaRepository, orcamentoRepository);
     }
 
     @Test
@@ -89,6 +92,17 @@ class CategoriaServiceTest {
         categoriaService.excluir(1L);
 
         verify(categoriaRepository).delete(categoria);
+    }
+
+    @Test
+    void deveImpedirExclusaoDeCategoriaComOrcamento() {
+        Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(orcamentoRepository.existsByCategoriaId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoriaService.excluir(1L))
+                .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
+                .hasMessage("A categoria possui orçamentos vinculados e não pode ser excluída");
     }
 
     @Test
