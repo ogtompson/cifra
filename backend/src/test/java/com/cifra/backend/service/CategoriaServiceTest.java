@@ -7,6 +7,7 @@ import com.cifra.backend.model.Categoria;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
+import com.cifra.backend.repository.CompraCartaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,12 +31,14 @@ class CategoriaServiceTest {
     private CategoriaRepository categoriaRepository;
     @Mock
     private OrcamentoCategoriaRepository orcamentoRepository;
+    @Mock
+    private CompraCartaoRepository compraCartaoRepository;
 
     private CategoriaService categoriaService;
 
     @BeforeEach
     void configurar() {
-        categoriaService = new CategoriaService(categoriaRepository, orcamentoRepository);
+        categoriaService = new CategoriaService(categoriaRepository, orcamentoRepository, compraCartaoRepository);
     }
 
     @Test
@@ -95,7 +98,7 @@ class CategoriaServiceTest {
                 new CategoriaRequest("Mercado", TipoOperacao.RECEITA)
         ))
                 .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
-                .hasMessage("A categoria possui orçamentos e deve continuar como despesa");
+                .hasMessage("A categoria possui orçamentos ou compras no cartão e deve continuar como despesa");
     }
 
     @Test
@@ -117,6 +120,17 @@ class CategoriaServiceTest {
         assertThatThrownBy(() -> categoriaService.excluir(1L))
                 .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
                 .hasMessage("A categoria possui orçamentos vinculados e não pode ser excluída");
+    }
+
+    @Test
+    void deveImpedirExclusaoDeCategoriaComCompraNoCartao() {
+        Categoria categoria = categoria(1L, "Compras", TipoOperacao.DESPESA);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(compraCartaoRepository.existsByCategoriaId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoriaService.excluir(1L))
+                .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
+                .hasMessage("A categoria possui compras no cartão vinculadas e não pode ser excluída");
     }
 
     @Test

@@ -9,4 +9,5 @@ public interface CompraCartaoRepository extends JpaRepository<CompraCartao, Long
     List<CompraCartao> findAllByOrderByDataCompraDescIdDesc();
     List<CompraCartao> findByCartaoIdOrderByDataCompraDescIdDesc(Long cartaoId);
     boolean existsByCartaoId(Long cartaoId);
+    boolean existsByCategoriaId(Long categoriaId);
 }

@@ -10,6 +10,7 @@ import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
+import com.cifra.backend.repository.CartaoCreditoRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import org.springframework.data.domain.Sort;
@@ -25,15 +26,18 @@ public class ContaService {
     private final ContaRepository contaRepository;
     private final TransacaoRepository transacaoRepository;
     private final TransacaoRecorrenteRepository transacaoRecorrenteRepository;
+    private final CartaoCreditoRepository cartaoCreditoRepository;
 
     public ContaService(
             ContaRepository contaRepository,
             TransacaoRepository transacaoRepository,
-            TransacaoRecorrenteRepository transacaoRecorrenteRepository
+            TransacaoRecorrenteRepository transacaoRecorrenteRepository,
+            CartaoCreditoRepository cartaoCreditoRepository
     ) {
         this.contaRepository = contaRepository;
         this.transacaoRepository = transacaoRepository;
         this.transacaoRecorrenteRepository = transacaoRecorrenteRepository;
+        this.cartaoCreditoRepository = cartaoCreditoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -98,13 +102,15 @@ public class ContaService {
         Conta conta = buscarEntidade(id);
         long totalTransacoes = transacaoRepository.countByContaId(id);
         long totalRecorrencias = transacaoRecorrenteRepository.countByContaId(id);
+        long totalCartoes = cartaoCreditoRepository.countByContaPagamentoId(id);
 
         return new ExclusaoContaResponse(
                 conta.getId(),
                 conta.getNome(),
                 totalTransacoes,
                 totalRecorrencias,
-                totalTransacoes == 0 && totalRecorrencias == 0
+                totalCartoes,
+                totalTransacoes == 0 && totalRecorrencias == 0 && totalCartoes == 0
         );
     }
 
@@ -113,6 +119,13 @@ public class ContaService {
         Conta conta = buscarEntidade(id);
         long totalTransacoes = transacaoRepository.countByContaId(id);
         long totalRecorrencias = transacaoRecorrenteRepository.countByContaId(id);
+        long totalCartoes = cartaoCreditoRepository.countByContaPagamentoId(id);
+
+        if (totalCartoes > 0) {
+            throw new RegraNegocioException(
+                    "A conta é usada para pagar " + totalCartoes + " cartão(ões). Reassocie ou exclua os cartões antes de remover a conta."
+            );
+        }
 
         if (!excluirDependencias && (totalTransacoes > 0 || totalRecorrencias > 0)) {
             throw new RegraNegocioException(

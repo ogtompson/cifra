@@ -11,6 +11,7 @@ import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.enums.TipoConta;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
+import com.cifra.backend.repository.CartaoCreditoRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,8 @@ class ContaServiceTest {
 
     @Mock
     private TransacaoRecorrenteRepository transacaoRecorrenteRepository;
+    @Mock
+    private CartaoCreditoRepository cartaoCreditoRepository;
 
     private ContaService contaService;
 
@@ -52,7 +55,8 @@ class ContaServiceTest {
         contaService = new ContaService(
                 contaRepository,
                 transacaoRepository,
-                transacaoRecorrenteRepository
+                transacaoRecorrenteRepository,
+                cartaoCreditoRepository
         );
     }
 
@@ -163,7 +167,7 @@ class ContaServiceTest {
         ExclusaoContaResponse resultado = contaService.consultarExclusao(1L);
 
         assertThat(resultado).isEqualTo(new ExclusaoContaResponse(
-                1L, "Nubank", 12L, 2L, false
+                1L, "Nubank", 12L, 2L, 0L, false
         ));
     }
 
@@ -178,6 +182,19 @@ class ContaServiceTest {
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessageContaining("12 transa\u00e7\u00e3o(\u00f5es)")
                 .hasMessageContaining("2 recorr\u00eancia(s)");
+
+        verify(contaRepository, never()).delete(conta);
+    }
+
+    @Test
+    void deveImpedirExclusaoDeContaUsadaPorCartao() {
+        Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(cartaoCreditoRepository.countByContaPagamentoId(1L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> contaService.excluir(1L, true))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("Reassocie ou exclua os cartões");
 
         verify(contaRepository, never()).delete(conta);
     }

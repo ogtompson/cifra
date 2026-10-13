@@ -230,7 +230,7 @@ export default function CategoriasView() {
       <div className={`mt-6 grid gap-5 xl:grid-cols-2 ${carregando ? "" : "content-enter"}`}>{carregando ? [1, 2].map((item) => <div key={item} className="paper-card overflow-hidden rounded-[1.6rem]"><EsqueletoLista linhas={5} /></div>) : <><GrupoCategorias tipo="DESPESA" categorias={separadas.DESPESA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /><GrupoCategorias tipo="RECEITA" categorias={separadas.RECEITA} aoAdicionar={abrirCriacao} aoEditar={abrirEdicao} aoExcluir={setCategoriaExcluida} /></>}</div>
 
       {modalAberto && <ModalCategoria categoria={categoriaEditada} orcamento={categoriaEditada ? orcamentosPorCategoria.get(String(categoriaEditada.id)) : null} referencia={mesOrcamento} tipoInicial={tipoInicial} aoFechar={() => setModalAberto(false)} aoSalvar={salvar} />}
-      {categoriaExcluida && <Confirmacao titulo={`Excluir “${categoriaExcluida.nome}”?`} descricao="A categoria só poderá ser excluída se não estiver vinculada a movimentações, recorrências ou orçamentos." confirmando={excluindo} aoCancelar={() => setCategoriaExcluida(null)} aoConfirmar={excluir} />}
+      {categoriaExcluida && <Confirmacao titulo={`Excluir “${categoriaExcluida.nome}”?`} descricao="A categoria só poderá ser excluída se não estiver vinculada a movimentações, recorrências, compras no cartão ou orçamentos." confirmando={excluindo} aoCancelar={() => setCategoriaExcluida(null)} aoConfirmar={excluir} />}
     </main>
   );
 }

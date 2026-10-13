@@ -97,6 +97,7 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
   const [arquivando, setArquivando] = useState(false);
   const [erro, setErro] = useState("");
   const possuiHistorico = !impacto.podeExcluirDiretamente;
+  const possuiCartoes = Number(impacto.totalCartoes) > 0;
 
   async function confirmar() {
     setErro("");
@@ -125,15 +126,16 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
       <div className="modal-body">
         {possuiHistorico ? (
           <>
-            <p className="mt-5 text-sm leading-6 text-foreground-soft">Esta conta ainda possui informações vinculadas. Arquive-a para preservar o histórico ou confirme abaixo para excluir tudo definitivamente.</p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <p className="mt-5 text-sm leading-6 text-foreground-soft">{possuiCartoes ? "Esta conta é usada para pagar cartão. Arquive-a agora ou reassocie os cartões antes de tentar excluí-la." : "Esta conta ainda possui informações vinculadas. Arquive-a para preservar o histórico ou confirme abaixo para excluir tudo definitivamente."}</p>
+            <div className="mt-5 grid grid-cols-3 gap-3">
               <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalTransacoes}</strong><span className="mt-1 block text-xs text-foreground-soft">transações</span></div>
               <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalRecorrencias}</strong><span className="mt-1 block text-xs text-foreground-soft">recorrências</span></div>
+              <div className="rounded-2xl bg-error/7 p-4"><strong className="block text-2xl text-error">{impacto.totalCartoes ?? 0}</strong><span className="mt-1 block text-xs text-foreground-soft">cartões</span></div>
             </div>
-            <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-error/15 bg-error/5 p-4">
+            {!possuiCartoes && <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-error/15 bg-error/5 p-4">
               <input type="checkbox" checked={confirmado} onChange={(evento) => setConfirmado(evento.target.checked)} className="mt-0.5 size-4 accent-[#b44337]" />
               <span className="text-sm font-semibold leading-5 text-primary">Entendo que a conta e todo o histórico vinculado serão excluídos.</span>
-            </label>
+            </label>}
           </>
         ) : (
           <p className="mt-5 rounded-xl bg-app-surface p-4 text-sm leading-6 text-foreground-soft">A conta não possui transações ou recorrências vinculadas e pode ser excluída com segurança.</p>
@@ -148,8 +150,8 @@ function ModalExclusaoConta({ impacto, aoFechar, aoConfirmar, aoArquivar }) {
               {arquivando ? "Arquivando..." : "Arquivar conta"}
             </button>
           )}
-          <button type="button" onClick={confirmar} disabled={excluindo || (possuiHistorico && !confirmado)} className="action-danger">
-            {excluindo ? "Excluindo..." : possuiHistorico ? "Excluir conta e histórico" : "Excluir conta"}
+          <button type="button" onClick={confirmar} disabled={excluindo || possuiCartoes || (possuiHistorico && !confirmado)} className="action-danger">
+            {excluindo ? "Excluindo..." : possuiCartoes ? "Reassocie os cartões" : possuiHistorico ? "Excluir conta e histórico" : "Excluir conta"}
           </button>
         </div>
       </div>

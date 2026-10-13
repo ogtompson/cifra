@@ -7,6 +7,7 @@ import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.model.Categoria;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
+import com.cifra.backend.repository.CompraCartaoRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +19,12 @@ public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
     private final OrcamentoCategoriaRepository orcamentoRepository;
+    private final CompraCartaoRepository compraCartaoRepository;
 
-    public CategoriaService(CategoriaRepository categoriaRepository, OrcamentoCategoriaRepository orcamentoRepository) {
+    public CategoriaService(CategoriaRepository categoriaRepository, OrcamentoCategoriaRepository orcamentoRepository, CompraCartaoRepository compraCartaoRepository) {
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
+        this.compraCartaoRepository = compraCartaoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -48,8 +51,8 @@ public class CategoriaService {
     public CategoriaResponse atualizar(Long id, CategoriaRequest request) {
         Categoria categoria = buscarEntidade(id);
         if (request.tipo() != categoria.getTipo()
-                && orcamentoRepository.existsByCategoriaId(id)) {
-            throw new RegraNegocioException("A categoria possui orçamentos e deve continuar como despesa");
+                && (orcamentoRepository.existsByCategoriaId(id) || compraCartaoRepository.existsByCategoriaId(id))) {
+            throw new RegraNegocioException("A categoria possui orçamentos ou compras no cartão e deve continuar como despesa");
         }
         atualizarDados(categoria, request);
         return paraResponse(categoriaRepository.save(categoria));
@@ -60,6 +63,9 @@ public class CategoriaService {
         Categoria categoria = buscarEntidade(id);
         if (orcamentoRepository.existsByCategoriaId(id)) {
             throw new RegraNegocioException("A categoria possui orçamentos vinculados e não pode ser excluída");
+        }
+        if (compraCartaoRepository.existsByCategoriaId(id)) {
+            throw new RegraNegocioException("A categoria possui compras no cartão vinculadas e não pode ser excluída");
         }
         categoriaRepository.delete(categoria);
     }

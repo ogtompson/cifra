@@ -121,13 +121,14 @@ class ContaControllerTest {
     @Test
     void deveRetornarImpactoDaExclusao() throws Exception {
         when(contaService.consultarExclusao(1L))
-                .thenReturn(new ExclusaoContaResponse(1L, "Nubank", 12L, 2L, false));
+                .thenReturn(new ExclusaoContaResponse(1L, "Nubank", 12L, 2L, 1L, false));
 
         mockMvc.perform(get("/api/contas/1/exclusao"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contaNome").value("Nubank"))
                 .andExpect(jsonPath("$.totalTransacoes").value(12))
                 .andExpect(jsonPath("$.totalRecorrencias").value(2))
+                .andExpect(jsonPath("$.totalCartoes").value(1))
                 .andExpect(jsonPath("$.podeExcluirDiretamente").value(false));
     }
 

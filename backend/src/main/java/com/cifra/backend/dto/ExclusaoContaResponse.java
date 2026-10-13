@@ -5,6 +5,7 @@ public record ExclusaoContaResponse(
         String contaNome,
         long totalTransacoes,
         long totalRecorrencias,
+        long totalCartoes,
         boolean podeExcluirDiretamente
 ) {
 }

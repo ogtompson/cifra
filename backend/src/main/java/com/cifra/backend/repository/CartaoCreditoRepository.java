@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface CartaoCreditoRepository extends JpaRepository<CartaoCredito, Long> {
     List<CartaoCredito> findAllByOrderByNomeAsc();
+    long countByContaPagamentoId(Long contaId);
 }
