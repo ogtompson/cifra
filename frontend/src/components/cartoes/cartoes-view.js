@@ -17,6 +17,7 @@ import {
   SelectCampo,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import CartaoCreditoVisual from "@/components/ui/cartao-credito-visual";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
@@ -174,20 +175,6 @@ function ModalPagamento({ cartao, fatura, aoFechar, aoPagar }) {
   );
 }
 
-function CartaoVisual({ cartao, selecionado, aoSelecionar, aoEditar, aoExcluir }) {
-  const percentual = Math.min((Number(cartao.limiteUtilizado) / Number(cartao.limiteTotal)) * 100, 100);
-  return (
-    <article className={`relative min-h-52 overflow-hidden rounded-[1.5rem] border p-5 text-white transition ${selecionado ? "border-[#dfb76e] bg-primary shadow-[0_16px_40px_rgba(0,58,48,.16)]" : "border-primary/8 bg-[#0b4a40] hover:border-[#dfb76e]/60"}`}>
-      <button type="button" onClick={aoSelecionar} className="absolute inset-0 z-0" aria-label={`Ver fatura de ${cartao.nome}`} />
-      <div className="pointer-events-none relative z-10 flex h-full min-h-42 flex-col">
-        <div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white/10"><Icone nome="cartoes" className="size-5 text-[#f0cf91]" /></span><span className="text-[.65rem] font-extrabold uppercase tracking-[.16em] text-white/55">{cartao.bandeira}</span></div>
-        <div className="mt-auto"><p className="text-xs font-bold text-white/65">{cartao.nome}</p><p className="mt-1 font-mono text-lg tracking-[.16em]">•••• {cartao.finalCartao}</p><div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#dfb76e]" style={{ width: `${percentual}%` }} /></div><div className="mt-2 flex justify-between text-[.62rem] text-white/55"><span>{moeda.format(cartao.limiteDisponivel)} livres</span><span>{percentual.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}% usado</span></div></div>
-      </div>
-      <div className="absolute bottom-3 right-3 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100"><button type="button" onClick={aoEditar} className="grid size-8 place-items-center rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white" aria-label={`Editar ${cartao.nome}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={aoExcluir} className="grid size-8 place-items-center rounded-lg bg-white/10 text-white/70 hover:bg-error hover:text-white" aria-label={`Excluir ${cartao.nome}`}><Icone nome="excluir" className="size-3.5" /></button></div>
-    </article>
-  );
-}
-
 export default function CartoesView() {
   const [referencia, setReferencia] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [dados, setDados] = useState({ cartoes: [], contas: [], categorias: [], compras: [] });
@@ -324,7 +311,7 @@ export default function CartoesView() {
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
 
       {!erro && (carregando ? <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3"><EsqueletoBloco className="h-52" /><EsqueletoBloco className="h-52" /><EsqueletoBloco className="h-52" /></div> : dados.cartoes.length ? (
-        <section className="content-enter mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{dados.cartoes.map((cartao) => <div className="group" key={cartao.id}><CartaoVisual cartao={cartao} selecionado={cartao.id === cartaoId} aoSelecionar={() => selecionarCartao(cartao.id)} aoEditar={() => setModalCartao(cartao)} aoExcluir={() => setExclusao({ tipo: "cartao", item: cartao })} /></div>)}</section>
+        <section className="content-enter mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{dados.cartoes.map((cartao) => <CartaoCreditoVisual key={cartao.id} cartao={cartao} selecionado={cartao.id === cartaoId} aoSelecionar={() => selecionarCartao(cartao.id)} aoEditar={() => setModalCartao(cartao)} aoExcluir={() => setExclusao({ tipo: "cartao", item: cartao })} />)}</section>
       ) : <div className="paper-card mt-6 overflow-hidden rounded-2xl"><EstadoVazio icone="cartoes" titulo="Cadastre seu primeiro cartão" descricao="Informe limite, fechamento, vencimento e a conta usada para pagar a fatura." acao={<button type="button" onClick={() => setModalCartao({})} className={botaoPrimario}>Criar cartão</button>} /></div>)}
 
       {!erro && !carregando && cartaoSelecionado && (carregandoFaturas ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_.65fr]"><EsqueletoBloco className="h-96" /><EsqueletoBloco className="h-96" /></div> : (
