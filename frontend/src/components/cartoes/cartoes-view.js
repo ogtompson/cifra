@@ -311,7 +311,7 @@ export default function CartoesView() {
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
 
       {!erro && (carregando ? <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3"><EsqueletoBloco className="h-52" /><EsqueletoBloco className="h-52" /><EsqueletoBloco className="h-52" /></div> : dados.cartoes.length ? (
-        <section className="content-enter mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{dados.cartoes.map((cartao) => <CartaoCreditoVisual key={cartao.id} cartao={cartao} selecionado={cartao.id === cartaoId} aoSelecionar={() => selecionarCartao(cartao.id)} aoEditar={() => setModalCartao(cartao)} aoExcluir={() => setExclusao({ tipo: "cartao", item: cartao })} />)}</section>
+        <section className="content-enter mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{dados.cartoes.map((cartao) => <CartaoCreditoVisual key={cartao.id} cartao={cartao} selecionado={cartao.id === cartaoId} aoSelecionar={() => selecionarCartao(cartao.id)} aoEditar={() => setModalCartao(cartao)} aoExcluir={() => setExclusao({ tipo: "cartao", item: cartao })} />)}</section>
       ) : <div className="paper-card mt-6 overflow-hidden rounded-2xl"><EstadoVazio icone="cartoes" titulo="Cadastre seu primeiro cartão" descricao="Informe limite, fechamento, vencimento e a conta usada para pagar a fatura." acao={<button type="button" onClick={() => setModalCartao({})} className={botaoPrimario}>Criar cartão</button>} /></div>)}
 
       {!erro && !carregando && cartaoSelecionado && (carregandoFaturas ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_.65fr]"><EsqueletoBloco className="h-96" /><EsqueletoBloco className="h-96" /></div> : (
