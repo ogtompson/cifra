@@ -84,6 +84,7 @@ function soma(lista, seletor = (item) => item) {
 
 export function filtrarMovimentos(transacoes, { contaId = "", categoriaId = "" } = {}) {
   return transacoes.filter((item) =>
+    item.natureza !== "PAGAMENTO_FATURA" &&
     (!contaId || String(item.contaId) === String(contaId)) &&
     (!categoriaId || String(item.categoriaId) === String(categoriaId))
   );
@@ -101,7 +102,7 @@ export function saldoAte(contas, transacoes, dataLimite, contaId = "") {
   const contasConsideradas = contas.filter((conta) => !contaId || String(conta.id) === String(contaId));
   const ids = new Set(contasConsideradas.map((conta) => String(conta.id)));
   const inicial = soma(contasConsideradas, (conta) => conta.saldoInicial);
-  const movimentos = transacoes.filter((item) => ids.has(String(item.contaId)) && criarData(item.data) <= dataLimite);
+  const movimentos = transacoes.filter((item) => item.natureza !== "COMPRA_CARTAO" && ids.has(String(item.contaId)) && criarData(item.data) <= dataLimite);
   return inicial + soma(movimentos, (item) => item.tipo === "RECEITA" ? item.valor : -Number(item.valor));
 }
 

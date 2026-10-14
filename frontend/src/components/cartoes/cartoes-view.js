@@ -144,6 +144,36 @@ function ModalCompra({ compra, cartoes, categorias, cartaoInicial, aoFechar, aoS
   );
 }
 
+function ModalPagamento({ cartao, fatura, aoFechar, aoPagar }) {
+  const [dataPagamento, setDataPagamento] = useState(hoje);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function enviar(evento) {
+    evento.preventDefault();
+    setSalvando(true);
+    setErro("");
+    try {
+      await aoPagar(dataPagamento);
+    } catch (falha) {
+      setErro(falha.message);
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalPadrao eyebrow="Pagamento de fatura" titulo={`Confirmar ${moeda.format(fatura.total)}`} aoFechar={aoFechar} tamanho="sm">
+      <form onSubmit={enviar} className="modal-body space-y-5">
+        <div className="rounded-2xl bg-primary/[0.035] p-4"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-secondary/9 text-secondary"><Icone nome="cartoes" className="size-4" /></span><div><p className="text-sm font-extrabold text-primary">{cartao.nome} · {cartao.finalCartao}</p><p className="mt-0.5 text-xs text-foreground-soft">Saída pela conta {cartao.contaPagamentoNome}</p></div></div></div>
+        <label className="block"><span className="mb-2 block text-sm font-bold text-primary">Data do pagamento</span><input className={campo} type="date" value={dataPagamento} max={hoje} onChange={(evento) => setDataPagamento(evento.target.value)} required /></label>
+        <p className="text-xs leading-5 text-foreground-soft">O saldo da conta será reduzido. O pagamento aparecerá no extrato, mas não será somado novamente às despesas.</p>
+        <ErroFormulario mensagem={erro} />
+        <div className="modal-footer"><button type="button" onClick={aoFechar} className={botaoSecundario}>Cancelar</button><button type="submit" disabled={salvando} className={botaoPrimario}>{salvando ? "Confirmando..." : "Confirmar pagamento"}</button></div>
+      </form>
+    </ModalPadrao>
+  );
+}
+
 function CartaoVisual({ cartao, selecionado, aoSelecionar, aoEditar, aoExcluir }) {
   const percentual = Math.min((Number(cartao.limiteUtilizado) / Number(cartao.limiteTotal)) * 100, 100);
   return (
@@ -162,12 +192,15 @@ export default function CartoesView() {
   const [referencia, setReferencia] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [dados, setDados] = useState({ cartoes: [], contas: [], categorias: [], compras: [] });
   const [faturas, setFaturas] = useState([]);
+  const [versaoFaturas, setVersaoFaturas] = useState(0);
   const [cartaoId, setCartaoId] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [carregandoFaturas, setCarregandoFaturas] = useState(false);
   const [erro, setErro] = useState("");
   const [modalCartao, setModalCartao] = useState(null);
   const [modalCompra, setModalCompra] = useState(null);
+  const [modalPagamento, setModalPagamento] = useState(false);
+  const [pagamentoDesfeito, setPagamentoDesfeito] = useState(null);
   const [exclusao, setExclusao] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -198,7 +231,7 @@ export default function CartoesView() {
       .catch((falha) => { if (ativo) setErro(falha.message); })
       .finally(() => { if (ativo) setCarregandoFaturas(false); });
     return () => { ativo = false; };
-  }, [cartaoId, referencia]);
+  }, [cartaoId, referencia, versaoFaturas]);
 
   const cartaoSelecionado = dados.cartoes.find((item) => item.id === cartaoId);
   const faturaAtual = faturas[0];
@@ -210,6 +243,7 @@ export default function CartoesView() {
     await apiFetch(editando ? `/cartoes/${editando}` : "/cartoes", { method: editando ? "PUT" : "POST", body: JSON.stringify(payload) });
     setModalCartao(null);
     await carregar();
+    setVersaoFaturas((atual) => atual + 1);
   }
 
   async function salvarCompra(payload) {
@@ -218,6 +252,7 @@ export default function CartoesView() {
     setModalCompra(null);
     setCartaoId(payload.cartaoId);
     await carregar();
+    setVersaoFaturas((atual) => atual + 1);
   }
 
   async function confirmarExclusao() {
@@ -226,9 +261,36 @@ export default function CartoesView() {
       await apiFetch(exclusao.tipo === "cartao" ? `/cartoes/${exclusao.item.id}` : `/cartoes/compras/${exclusao.item.id}`, { method: "DELETE" });
       setExclusao(null);
       await carregar();
+      setVersaoFaturas((atual) => atual + 1);
     } catch (falha) {
       setErro(falha.message);
       setExclusao(null);
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
+  async function pagarFatura(dataPagamento) {
+    const competencia = faturaAtual.mesReferencia.slice(0, 7);
+    await apiFetch(`/cartoes/${cartaoId}/faturas/${competencia}/pagamento`, { method: "POST", body: JSON.stringify({ dataPagamento }) });
+    setModalPagamento(false);
+    setCarregandoFaturas(true);
+    await carregar();
+    setVersaoFaturas((atual) => atual + 1);
+  }
+
+  async function desfazerPagamento() {
+    setExcluindo(true);
+    try {
+      const competencia = pagamentoDesfeito.mesReferencia.slice(0, 7);
+      await apiFetch(`/cartoes/${cartaoId}/faturas/${competencia}/pagamento`, { method: "DELETE" });
+      setPagamentoDesfeito(null);
+      setCarregandoFaturas(true);
+      await carregar();
+      setVersaoFaturas((atual) => atual + 1);
+    } catch (falha) {
+      setErro(falha.message);
+      setPagamentoDesfeito(null);
     } finally {
       setExcluindo(false);
     }
@@ -268,7 +330,7 @@ export default function CartoesView() {
       {!erro && !carregando && cartaoSelecionado && (carregandoFaturas ? <div className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_.65fr]"><EsqueletoBloco className="h-96" /><EsqueletoBloco className="h-96" /></div> : (
         <div className="content-enter mt-5 grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
           <section className="paper-card overflow-hidden rounded-2xl">
-            <header className="flex flex-col justify-between gap-3 border-b border-primary/7 px-5 py-5 sm:flex-row sm:items-end sm:px-6"><div><p className="text-xs font-bold text-foreground-soft">Fatura de {mesCurto.format(referencia)}</p><p className="mt-1 text-3xl font-extrabold tracking-tight text-primary">{moeda.format(faturaAtual?.total ?? 0)}</p></div><div className="flex gap-5 text-[.65rem] text-foreground-soft"><span>Fecha <strong className="block text-xs text-primary">{faturaAtual ? dataCurta.format(new Date(`${faturaAtual.dataFechamento}T12:00:00`)) : "—"}</strong></span><span>Vence <strong className="block text-xs text-primary">{faturaAtual ? dataCurta.format(new Date(`${faturaAtual.dataVencimento}T12:00:00`)) : "—"}</strong></span></div></header>
+            <header className="flex flex-col justify-between gap-4 border-b border-primary/7 px-5 py-5 sm:flex-row sm:items-end sm:px-6"><div><div className="flex items-center gap-2"><p className="text-xs font-bold text-foreground-soft">Fatura de {mesCurto.format(referencia)}</p>{faturaAtual?.paga && <span className="rounded-full bg-positive/10 px-2 py-0.5 text-[.58rem] font-extrabold text-positive">Paga</span>}</div><p className="mt-1 text-3xl font-extrabold tracking-tight text-primary">{moeda.format(faturaAtual?.total ?? 0)}</p>{faturaAtual?.paga && <p className="mt-1 text-[.62rem] text-foreground-soft">Pagamento em {dataCurta.format(new Date(`${faturaAtual.dataPagamento}T12:00:00`))}</p>}</div><div className="flex flex-wrap items-end gap-4"><div className="flex gap-5 text-[.65rem] text-foreground-soft"><span>Fecha <strong className="block text-xs text-primary">{faturaAtual ? dataCurta.format(new Date(`${faturaAtual.dataFechamento}T12:00:00`)) : "—"}</strong></span><span>Vence <strong className="block text-xs text-primary">{faturaAtual ? dataCurta.format(new Date(`${faturaAtual.dataVencimento}T12:00:00`)) : "—"}</strong></span></div>{faturaAtual?.total > 0 && (faturaAtual.paga ? <button type="button" onClick={() => setPagamentoDesfeito(faturaAtual)} className={botaoSecundario}>Desfazer pagamento</button> : <button type="button" onClick={() => setModalPagamento(true)} className={botaoPrimario}>Pagar fatura</button>)}</div></header>
             {faturaAtual?.parcelas?.length ? <div className="divide-y divide-primary/6">{faturaAtual.parcelas.map((parcela) => <div key={`${parcela.compraId}-${parcela.parcela}`} className="interactive-row flex items-center gap-3 px-5 py-4 sm:px-6"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/[0.055] text-primary"><Icone nome="compras" className="size-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold text-primary">{parcela.descricao}</p><p className="mt-0.5 text-[.65rem] text-foreground-soft">{parcela.categoriaNome} · {parcela.parcela}/{parcela.totalParcelas}</p></div><strong className="text-sm text-primary">{moeda.format(parcela.valor)}</strong></div>)}</div> : <EstadoVazio compacto icone="cartoes" titulo="Fatura sem lançamentos" descricao="Nenhuma parcela está prevista para este mês." />}
           </section>
 
@@ -277,7 +339,7 @@ export default function CartoesView() {
             <section className="paper-card rounded-2xl p-5 sm:p-6"><p className="text-xs text-foreground-soft">Compras parceladas registradas</p><p className="mt-1 text-xl font-extrabold text-primary">{moeda.format(totalParcelado)}</p><p className="mt-2 text-[.65rem] leading-5 text-foreground-soft">{comprasDoCartao.length} {comprasDoCartao.length === 1 ? "compra" : "compras"} · pagamento pela conta {cartaoSelecionado.contaPagamentoNome}</p></section>
           </aside>
 
-          <section className="paper-card overflow-hidden rounded-2xl xl:col-span-2"><header className="border-b border-primary/7 px-5 py-4 sm:px-6"><h2 className="text-base font-extrabold text-primary">Próximas faturas</h2><p className="mt-0.5 text-xs text-foreground-soft">Parcelas já assumidas nos próximos seis meses.</p></header><div className="grid divide-y divide-primary/7 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:grid-cols-6">{faturas.map((fatura, indice) => <button type="button" key={fatura.mesReferencia} onClick={() => indice && abrirCompetencia(fatura.mesReferencia)} className={`px-4 py-4 text-left transition hover:bg-secondary/[0.025] ${indice === 0 ? "bg-primary/[0.025]" : ""}`}><span className="text-[.62rem] font-bold capitalize text-foreground-soft">{mesCurto.format(new Date(`${fatura.mesReferencia}T12:00:00`))}</span><strong className="mt-1 block text-sm text-primary">{moeda.format(fatura.total)}</strong><span className="mt-1 block text-[.58rem] text-foreground-soft">{fatura.parcelas.length} {fatura.parcelas.length === 1 ? "parcela" : "parcelas"}</span></button>)}</div></section>
+          <section className="paper-card overflow-hidden rounded-2xl xl:col-span-2"><header className="border-b border-primary/7 px-5 py-4 sm:px-6"><h2 className="text-base font-extrabold text-primary">Próximas faturas</h2><p className="mt-0.5 text-xs text-foreground-soft">Parcelas já assumidas nos próximos seis meses.</p></header><div className="grid divide-y divide-primary/7 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:grid-cols-6">{faturas.map((fatura, indice) => <button type="button" key={fatura.mesReferencia} onClick={() => indice && abrirCompetencia(fatura.mesReferencia)} className={`px-4 py-4 text-left transition hover:bg-secondary/[0.025] ${indice === 0 ? "bg-primary/[0.025]" : ""}`}><span className="flex items-center justify-between gap-2 text-[.62rem] font-bold capitalize text-foreground-soft">{mesCurto.format(new Date(`${fatura.mesReferencia}T12:00:00`))}{fatura.paga && <i className="size-1.5 rounded-full bg-positive" aria-label="Paga" />}</span><strong className={`mt-1 block text-sm ${fatura.paga ? "text-positive" : "text-primary"}`}>{moeda.format(fatura.total)}</strong><span className="mt-1 block text-[.58rem] text-foreground-soft">{fatura.paga ? "fatura paga" : `${fatura.parcelas.length} ${fatura.parcelas.length === 1 ? "parcela" : "parcelas"}`}</span></button>)}</div></section>
 
           <section className="paper-card overflow-hidden rounded-2xl xl:col-span-2"><header className="flex items-center justify-between border-b border-primary/7 px-5 py-4 sm:px-6"><div><h2 className="text-base font-extrabold text-primary">Compras do cartão</h2><p className="mt-0.5 text-xs text-foreground-soft">Histórico e parcelamentos cadastrados.</p></div><button type="button" onClick={() => setModalCompra({})} className="text-xs font-extrabold text-secondary">Adicionar</button></header>{comprasDoCartao.length ? <div className="divide-y divide-primary/6">{comprasDoCartao.map((compra) => <article key={compra.id} className="interactive-row flex items-center gap-3 px-5 py-4 sm:px-6"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/[0.055] text-primary"><Icone nome="compras" className="size-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold text-primary">{compra.descricao}</p><p className="mt-0.5 text-[.65rem] text-foreground-soft">{compra.categoriaNome} · {compra.numeroParcelas}× de {moeda.format(compra.valorParcela)}</p></div><strong className="hidden text-sm text-primary sm:block">{moeda.format(compra.valorTotal)}</strong><div className="flex gap-0.5"><button type="button" onClick={() => setModalCompra(compra)} className="icon-action" aria-label={`Editar ${compra.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => setExclusao({ tipo: "compra", item: compra })} className="icon-action hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${compra.descricao}`}><Icone nome="excluir" className="size-3.5" /></button></div></article>)}</div> : <EstadoVazio compacto icone="compras" titulo="Nenhuma compra neste cartão" descricao="Registre compras à vista ou parceladas para projetar as faturas." />}</section>
         </div>
@@ -285,6 +347,8 @@ export default function CartoesView() {
 
       {modalCartao && <ModalCartao cartao={modalCartao.id ? modalCartao : null} contas={dados.contas} aoFechar={() => setModalCartao(null)} aoSalvar={salvarCartao} />}
       {modalCompra && <ModalCompra compra={modalCompra.id ? modalCompra : null} cartoes={dados.cartoes} categorias={dados.categorias} cartaoInicial={cartaoId} aoFechar={() => setModalCompra(null)} aoSalvar={salvarCompra} />}
+      {modalPagamento && faturaAtual && <ModalPagamento cartao={cartaoSelecionado} fatura={faturaAtual} aoFechar={() => setModalPagamento(false)} aoPagar={pagarFatura} />}
+      {pagamentoDesfeito && <Confirmacao titulo="Desfazer pagamento da fatura?" descricao="A saída será removida da conta vinculada e o limite correspondente voltará a ficar comprometido." rotuloConfirmar="Desfazer pagamento" confirmando={excluindo} aoCancelar={() => setPagamentoDesfeito(null)} aoConfirmar={desfazerPagamento} />}
       {exclusao && <Confirmacao titulo={`Excluir “${exclusao.item.nome ?? exclusao.item.descricao}”?`} descricao={exclusao.tipo === "cartao" ? "O cartão só poderá ser excluído se não possuir compras vinculadas." : "A compra e todas as suas parcelas deixarão de aparecer nas faturas projetadas."} confirmando={excluindo} aoCancelar={() => setExclusao(null)} aoConfirmar={confirmarExclusao} />}
     </main>
   );
