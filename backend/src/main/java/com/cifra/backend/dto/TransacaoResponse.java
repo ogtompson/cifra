@@ -1,6 +1,7 @@
 package com.cifra.backend.dto;
 
 import com.cifra.backend.model.enums.TipoOperacao;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ public record TransacaoResponse(
         String contaNome,
         Long categoriaId,
         String categoriaNome,
-        Long recorrenciaId
+        Long recorrenciaId,
+        NaturezaTransacao natureza
 ) {
 }

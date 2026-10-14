@@ -10,6 +10,7 @@ import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.TotalPorCategoria;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.CompraCartaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,12 +38,14 @@ class OrcamentoCategoriaServiceTest {
     private CategoriaRepository categoriaRepository;
     @Mock
     private TransacaoRepository transacaoRepository;
+    @Mock
+    private CompraCartaoRepository compraCartaoRepository;
 
     private OrcamentoCategoriaService service;
 
     @BeforeEach
     void configurar() {
-        service = new OrcamentoCategoriaService(orcamentoRepository, categoriaRepository, transacaoRepository);
+        service = new OrcamentoCategoriaService(orcamentoRepository, categoriaRepository, transacaoRepository, compraCartaoRepository);
     }
 
     @Test
@@ -50,17 +53,21 @@ class OrcamentoCategoriaServiceTest {
         Categoria alimentacao = new Categoria(1L, "Alimentação", TipoOperacao.DESPESA);
         OrcamentoCategoria orcamento = new OrcamentoCategoria(2L, alimentacao, LocalDate.of(2026, 10, 1), new BigDecimal("1000.00"));
         TotalPorCategoria total = mock(TotalPorCategoria.class);
+        TotalPorCategoria compraCartao = mock(TotalPorCategoria.class);
         when(total.getCategoriaId()).thenReturn(1L);
         when(total.getTotal()).thenReturn(new BigDecimal("850.00"));
         when(transacaoRepository.somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31))).thenReturn(List.of(total));
+        when(compraCartao.getCategoriaId()).thenReturn(1L);
+        when(compraCartao.getTotal()).thenReturn(new BigDecimal("100.00"));
+        when(compraCartaoRepository.somarPorCategoriaEPeriodo(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31))).thenReturn(List.of(compraCartao));
         when(orcamentoRepository.findByMesReferenciaOrderByCategoriaNomeAsc(LocalDate.of(2026, 10, 1))).thenReturn(List.of(orcamento));
 
         List<OrcamentoCategoriaResponse> resultado = service.listar(LocalDate.of(2026, 10, 13));
 
         assertThat(resultado).singleElement().satisfies(item -> {
-            assertThat(item.gastoRealizado()).isEqualByComparingTo("850.00");
-            assertThat(item.saldoDisponivel()).isEqualByComparingTo("150.00");
-            assertThat(item.percentualUtilizado()).isEqualByComparingTo("85.0");
+            assertThat(item.gastoRealizado()).isEqualByComparingTo("950.00");
+            assertThat(item.saldoDisponivel()).isEqualByComparingTo("50.00");
+            assertThat(item.percentualUtilizado()).isEqualByComparingTo("95.0");
             assertThat(item.status()).isEqualTo("ATENCAO");
         });
     }

@@ -1,6 +1,7 @@
 package com.cifra.backend.model;
 
 import com.cifra.backend.model.enums.TipoOperacao;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -46,10 +47,14 @@ public class Transacao {
     private Conta conta;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "categoria_id", nullable = false)
+    @JoinColumn(name = "categoria_id")
     private Categoria categoria;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recorrencia_id")
     private TransacaoRecorrente recorrencia;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "natureza")
+    private NaturezaTransacao natureza;
 }

@@ -14,6 +14,8 @@ public record CompraCartaoResponse(
         LocalDate ultimoVencimento,
         Long cartaoId,
         String cartaoNome,
+        Long contaPagamentoId,
+        String contaPagamentoNome,
         Long categoriaId,
         String categoriaNome
 ) {

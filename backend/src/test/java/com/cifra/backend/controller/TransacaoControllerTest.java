@@ -4,6 +4,7 @@ import com.cifra.backend.dto.TransacaoResponse;
 import com.cifra.backend.exception.ApiExceptionHandler;
 import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.model.enums.TipoOperacao;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.service.TransacaoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,8 @@ class TransacaoControllerTest {
                 "Conta corrente",
                 3L,
                 "Alimentação",
-                null
+                null,
+                NaturezaTransacao.LANCAMENTO
         ));
 
         mockMvc.perform(post("/api/transacoes")

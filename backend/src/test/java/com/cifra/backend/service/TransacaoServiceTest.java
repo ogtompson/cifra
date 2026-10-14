@@ -9,6 +9,7 @@ import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.Transacao;
 import com.cifra.backend.model.enums.TipoConta;
 import com.cifra.backend.model.enums.TipoOperacao;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
@@ -70,6 +71,7 @@ class TransacaoServiceTest {
 
         assertThat(resultado.id()).isEqualTo(3L);
         assertThat(resultado.valor()).isEqualByComparingTo("25.90");
+        assertThat(resultado.natureza()).isEqualTo(NaturezaTransacao.LANCAMENTO);
         assertThat(resultado.recorrenciaId()).isNull();
         assertThat(resultado.contaNome()).isEqualTo("Conta corrente");
     }
@@ -127,6 +129,18 @@ class TransacaoServiceTest {
         verify(transacaoRepository).delete(transacao);
     }
 
+    @Test
+    void deveImpedirExclusaoManualDePagamentoDeFatura() {
+        Transacao pagamento = transacao(5L);
+        pagamento.setNatureza(NaturezaTransacao.PAGAMENTO_FATURA);
+        pagamento.setCategoria(null);
+        when(transacaoRepository.findById(5L)).thenReturn(Optional.of(pagamento));
+
+        assertThatThrownBy(() -> transacaoService.excluir(5L))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Pagamentos de fatura devem ser alterados na área de cartões");
+    }
+
     private TransacaoRequest request(TipoOperacao tipo, Long contaId, Long categoriaId) {
         return new TransacaoRequest(
                 "  Almoço  ",
@@ -147,7 +161,8 @@ class TransacaoServiceTest {
                 TipoOperacao.DESPESA,
                 conta,
                 categoriaDespesa,
-                null
+                null,
+                NaturezaTransacao.LANCAMENTO
         );
     }
 }

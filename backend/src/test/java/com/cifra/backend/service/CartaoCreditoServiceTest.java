@@ -3,21 +3,28 @@ package com.cifra.backend.service;
 import com.cifra.backend.dto.CartaoCreditoRequest;
 import com.cifra.backend.dto.CompraCartaoRequest;
 import com.cifra.backend.dto.FaturaCartaoResponse;
+import com.cifra.backend.dto.PagamentoFaturaRequest;
 import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.model.CartaoCredito;
 import com.cifra.backend.model.Categoria;
 import com.cifra.backend.model.CompraCartao;
 import com.cifra.backend.model.Conta;
+import com.cifra.backend.model.PagamentoFatura;
+import com.cifra.backend.model.Transacao;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.model.enums.TipoConta;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.CartaoCreditoRepository;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
 import com.cifra.backend.repository.ContaRepository;
+import com.cifra.backend.repository.PagamentoFaturaRepository;
+import com.cifra.backend.repository.TransacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -32,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class CartaoCreditoServiceTest {
@@ -40,6 +48,8 @@ class CartaoCreditoServiceTest {
     @Mock private CompraCartaoRepository compraRepository;
     @Mock private ContaRepository contaRepository;
     @Mock private CategoriaRepository categoriaRepository;
+    @Mock private PagamentoFaturaRepository pagamentoRepository;
+    @Mock private TransacaoRepository transacaoRepository;
 
     private CartaoCreditoService service;
     private Conta conta;
@@ -49,7 +59,7 @@ class CartaoCreditoServiceTest {
     @BeforeEach
     void configurar() {
         Clock clock = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneId.of("America/Sao_Paulo"));
-        service = new CartaoCreditoService(cartaoRepository, compraRepository, contaRepository, categoriaRepository, clock);
+        service = new CartaoCreditoService(cartaoRepository, compraRepository, contaRepository, categoriaRepository, pagamentoRepository, transacaoRepository, clock);
         conta = new Conta(1L, "Nubank", BigDecimal.ZERO, TipoConta.CORRENTE);
         categoria = new Categoria(2L, "Compras", TipoOperacao.DESPESA);
         cartao = new CartaoCredito(3L, "Ultravioleta", "Mastercard", "1234", new BigDecimal("5000.00"), 28, 5, conta);
@@ -97,5 +107,49 @@ class CartaoCreditoServiceTest {
         assertThatThrownBy(() -> service.criarCompra(request))
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessage("A compra ultrapassa o limite disponível do cartão");
+    }
+
+    @Test
+    void devePagarFaturaCriandoSaidaEspecialNaConta() {
+        CompraCartao compra = new CompraCartao(4L, "Notebook", new BigDecimal("900.00"), LocalDate.of(2026, 10, 20), 3, cartao, categoria);
+        when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));
+        when(compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(3L)).thenReturn(List.of(compra));
+        when(pagamentoRepository.findByCartaoIdAndMesReferencia(3L, LocalDate.of(2026, 11, 1))).thenReturn(Optional.empty());
+        when(transacaoRepository.save(any())).thenAnswer(invocacao -> {
+            Transacao transacao = invocacao.getArgument(0);
+            transacao.setId(10L);
+            return transacao;
+        });
+
+        FaturaCartaoResponse resposta = service.pagarFatura(
+                3L,
+                LocalDate.of(2026, 11, 1),
+                new PagamentoFaturaRequest(LocalDate.of(2026, 10, 13))
+        );
+
+        ArgumentCaptor<Transacao> transacao = ArgumentCaptor.forClass(Transacao.class);
+        verify(transacaoRepository).save(transacao.capture());
+        assertThat(transacao.getValue().getNatureza()).isEqualTo(NaturezaTransacao.PAGAMENTO_FATURA);
+        assertThat(transacao.getValue().getValor()).isEqualByComparingTo("300.00");
+        assertThat(transacao.getValue().getConta()).isEqualTo(conta);
+        assertThat(transacao.getValue().getCategoria()).isNull();
+        verify(pagamentoRepository).save(any(PagamentoFatura.class));
+        assertThat(resposta.paga()).isTrue();
+        assertThat(resposta.dataPagamento()).isEqualTo(LocalDate.of(2026, 10, 13));
+    }
+
+    @Test
+    void deveLiberarLimiteDaFaturaPaga() {
+        CompraCartao compra = new CompraCartao(4L, "Notebook", new BigDecimal("900.00"), LocalDate.of(2026, 10, 20), 3, cartao, categoria);
+        PagamentoFatura pagamento = new PagamentoFatura();
+        pagamento.setMesReferencia(LocalDate.of(2026, 11, 1));
+        when(cartaoRepository.findAllByOrderByNomeAsc()).thenReturn(List.of(cartao));
+        when(compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(3L)).thenReturn(List.of(compra));
+        when(pagamentoRepository.findByCartaoId(3L)).thenReturn(List.of(pagamento));
+
+        var resposta = service.listarCartoes().getFirst();
+
+        assertThat(resposta.limiteUtilizado()).isEqualByComparingTo("600.00");
+        assertThat(resposta.limiteDisponivel()).isEqualByComparingTo("4400.00");
     }
 }

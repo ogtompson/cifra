@@ -2,6 +2,7 @@ package com.cifra.backend.service;
 
 import com.cifra.backend.model.Transacao;
 import com.cifra.backend.model.TransacaoRecorrente;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import org.springframework.stereotype.Service;
@@ -118,6 +119,7 @@ public class GeracaoRecorrenciasService {
         transacao.setConta(recorrencia.getConta());
         transacao.setCategoria(recorrencia.getCategoria());
         transacao.setRecorrencia(recorrencia);
+        transacao.setNatureza(NaturezaTransacao.LANCAMENTO);
         return transacao;
     }
 }

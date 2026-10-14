@@ -37,6 +37,7 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             from Transacao transacao
             where transacao.tipo = :tipo
               and transacao.data between :dataInicio and :dataFim
+              and (transacao.natureza is null or transacao.natureza <> com.cifra.backend.model.enums.NaturezaTransacao.PAGAMENTO_FATURA)
             """)
     BigDecimal somarValorPorTipoEPeriodo(
             @Param("tipo") TipoOperacao tipo,
@@ -74,6 +75,7 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             from Transacao transacao
             where transacao.tipo = :tipo
               and transacao.data between :dataInicio and :dataFim
+              and (transacao.natureza is null or transacao.natureza <> com.cifra.backend.model.enums.NaturezaTransacao.PAGAMENTO_FATURA)
             group by transacao.categoria.id, transacao.categoria.nome
             order by sum(transacao.valor) desc, transacao.categoria.nome asc
             """)

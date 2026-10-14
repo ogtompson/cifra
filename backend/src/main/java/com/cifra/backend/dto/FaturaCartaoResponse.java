@@ -11,6 +11,8 @@ public record FaturaCartaoResponse(
         LocalDate dataFechamento,
         LocalDate dataVencimento,
         BigDecimal total,
-        List<ParcelaFaturaResponse> parcelas
+        List<ParcelaFaturaResponse> parcelas,
+        boolean paga,
+        LocalDate dataPagamento
 ) {
 }

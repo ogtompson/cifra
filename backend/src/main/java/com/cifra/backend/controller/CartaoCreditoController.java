@@ -5,6 +5,7 @@ import com.cifra.backend.dto.CartaoCreditoResponse;
 import com.cifra.backend.dto.CompraCartaoRequest;
 import com.cifra.backend.dto.CompraCartaoResponse;
 import com.cifra.backend.dto.FaturaCartaoResponse;
+import com.cifra.backend.dto.PagamentoFaturaRequest;
 import com.cifra.backend.service.CartaoCreditoService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,6 +23,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 @RestController
@@ -87,5 +89,23 @@ public class CartaoCreditoController {
             @RequestParam(defaultValue = "6") int meses
     ) {
         return service.projetarFaturas(id, mesReferencia, meses);
+    }
+
+    @PostMapping("/{id}/faturas/{mesReferencia}/pagamento")
+    public FaturaCartaoResponse pagarFatura(
+            @PathVariable Long id,
+            @PathVariable String mesReferencia,
+            @Valid @RequestBody PagamentoFaturaRequest request
+    ) {
+        return service.pagarFatura(id, YearMonth.parse(mesReferencia).atDay(1), request);
+    }
+
+    @DeleteMapping("/{id}/faturas/{mesReferencia}/pagamento")
+    public ResponseEntity<Void> desfazerPagamento(
+            @PathVariable Long id,
+            @PathVariable String mesReferencia
+    ) {
+        service.desfazerPagamento(id, YearMonth.parse(mesReferencia).atDay(1));
+        return ResponseEntity.noContent().build();
     }
 }

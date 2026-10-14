@@ -6,6 +6,7 @@ import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TotalPorCategoria;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.CompraCartaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,8 @@ class ResumoFinanceiroServiceTest {
 
     @Mock
     private TransacaoRepository transacaoRepository;
+    @Mock
+    private CompraCartaoRepository compraCartaoRepository;
 
     @Mock
     private TotalPorCategoria totalAlimentacao;
@@ -38,7 +41,7 @@ class ResumoFinanceiroServiceTest {
     @BeforeEach
     void configurar() {
         resumoFinanceiroService = new ResumoFinanceiroService(
-                contaRepository, transacaoRepository
+                contaRepository, transacaoRepository, compraCartaoRepository
         );
     }
 
@@ -46,6 +49,7 @@ class ResumoFinanceiroServiceTest {
     void deveGerarResumoDoPeriodoESaldoAteADataFinal() {
         LocalDate inicio = LocalDate.of(2026, 9, 1);
         LocalDate fim = LocalDate.of(2026, 9, 30);
+        TotalPorCategoria compraCartao = org.mockito.Mockito.mock(TotalPorCategoria.class);
         when(transacaoRepository.somarValorPorTipoEPeriodo(
                 TipoOperacao.RECEITA, inicio, fim
         )).thenReturn(new BigDecimal("3000.00"));
@@ -63,17 +67,22 @@ class ResumoFinanceiroServiceTest {
         when(transacaoRepository.somarPorCategoriaETipoEPeriodo(
                 TipoOperacao.DESPESA, inicio, fim
         )).thenReturn(List.of(totalAlimentacao));
+        when(compraCartaoRepository.somarValorPorPeriodo(inicio, fim)).thenReturn(new BigDecimal("300.00"));
+        when(compraCartao.getCategoriaId()).thenReturn(2L);
+        when(compraCartao.getCategoriaNome()).thenReturn("Alimentação");
+        when(compraCartao.getTotal()).thenReturn(new BigDecimal("300.00"));
+        when(compraCartaoRepository.somarPorCategoriaEPeriodo(inicio, fim)).thenReturn(List.of(compraCartao));
 
         ResumoFinanceiroResponse resultado = resumoFinanceiroService.gerar(inicio, fim);
 
         assertThat(resultado.saldoTotal()).isEqualByComparingTo("4200.00");
         assertThat(resultado.totalReceitas()).isEqualByComparingTo("3000.00");
-        assertThat(resultado.totalDespesas()).isEqualByComparingTo("1200.00");
-        assertThat(resultado.resultadoPeriodo()).isEqualByComparingTo("1800.00");
+        assertThat(resultado.totalDespesas()).isEqualByComparingTo("1500.00");
+        assertThat(resultado.resultadoPeriodo()).isEqualByComparingTo("1500.00");
         assertThat(resultado.despesasPorCategoria()).singleElement().satisfies(total -> {
             assertThat(total.categoriaId()).isEqualTo(2L);
             assertThat(total.categoriaNome()).isEqualTo("Alimentação");
-            assertThat(total.total()).isEqualByComparingTo("700.00");
+            assertThat(total.total()).isEqualByComparingTo("1000.00");
         });
     }
 
@@ -102,6 +111,6 @@ class ResumoFinanceiroServiceTest {
         assertThatThrownBy(() -> resumoFinanceiroService.gerar(inicio, fim))
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessage("A data inicial não pode ser posterior à data final");
-        verifyNoInteractions(contaRepository, transacaoRepository);
+        verifyNoInteractions(contaRepository, transacaoRepository, compraCartaoRepository);
     }
 }

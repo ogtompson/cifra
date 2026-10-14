@@ -9,8 +9,8 @@ import com.cifra.backend.model.OrcamentoCategoria;
 import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
-import com.cifra.backend.repository.TotalPorCategoria;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.CompraCartaoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +18,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import java.util.List;
 
@@ -32,32 +30,30 @@ public class OrcamentoCategoriaService {
     private final OrcamentoCategoriaRepository orcamentoRepository;
     private final CategoriaRepository categoriaRepository;
     private final TransacaoRepository transacaoRepository;
+    private final CompraCartaoRepository compraCartaoRepository;
 
     public OrcamentoCategoriaService(
             OrcamentoCategoriaRepository orcamentoRepository,
             CategoriaRepository categoriaRepository,
-            TransacaoRepository transacaoRepository
+            TransacaoRepository transacaoRepository,
+            CompraCartaoRepository compraCartaoRepository
     ) {
         this.orcamentoRepository = orcamentoRepository;
         this.categoriaRepository = categoriaRepository;
         this.transacaoRepository = transacaoRepository;
+        this.compraCartaoRepository = compraCartaoRepository;
     }
 
     @Transactional(readOnly = true)
     public List<OrcamentoCategoriaResponse> listar(LocalDate mesReferencia) {
         LocalDate mes = normalizarMes(mesReferencia);
-        Map<Long, TotalPorCategoria> gastos = transacaoRepository
-                .somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, mes, mes.withDayOfMonth(mes.lengthOfMonth()))
-                .stream()
-                .collect(Collectors.toMap(TotalPorCategoria::getCategoriaId, Function.identity()));
+        Map<Long, BigDecimal> gastos = gastosPorCategoria(mes);
 
         return orcamentoRepository.findByMesReferenciaOrderByCategoriaNomeAsc(mes)
                 .stream()
                 .map(orcamento -> paraResponse(
                         orcamento,
-                        gastos.containsKey(orcamento.getCategoria().getId())
-                                ? gastos.get(orcamento.getCategoria().getId()).getTotal()
-                                : BigDecimal.ZERO
+                        gastos.getOrDefault(orcamento.getCategoria().getId(), BigDecimal.ZERO)
                 ))
                 .toList();
     }
@@ -114,13 +110,17 @@ public class OrcamentoCategoriaService {
     }
 
     private BigDecimal gastoDaCategoria(Long categoriaId, LocalDate mes) {
-        return transacaoRepository
-                .somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, mes, mes.withDayOfMonth(mes.lengthOfMonth()))
-                .stream()
-                .filter(total -> total.getCategoriaId().equals(categoriaId))
-                .map(TotalPorCategoria::getTotal)
-                .findFirst()
-                .orElse(BigDecimal.ZERO);
+        return gastosPorCategoria(mes).getOrDefault(categoriaId, BigDecimal.ZERO);
+    }
+
+    private Map<Long, BigDecimal> gastosPorCategoria(LocalDate mes) {
+        LocalDate fim = mes.withDayOfMonth(mes.lengthOfMonth());
+        Map<Long, BigDecimal> gastos = new java.util.HashMap<>();
+        transacaoRepository.somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, mes, fim)
+                .forEach(total -> gastos.merge(total.getCategoriaId(), total.getTotal(), BigDecimal::add));
+        compraCartaoRepository.somarPorCategoriaEPeriodo(mes, fim)
+                .forEach(total -> gastos.merge(total.getCategoriaId(), total.getTotal(), BigDecimal::add));
+        return gastos;
     }
 
     private LocalDate normalizarMes(LocalDate data) {

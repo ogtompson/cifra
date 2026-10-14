@@ -7,6 +7,7 @@ import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.model.Categoria;
 import com.cifra.backend.model.Conta;
 import com.cifra.backend.model.Transacao;
+import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
@@ -63,13 +64,16 @@ public class TransacaoService {
     @Transactional
     public TransacaoResponse atualizar(Long id, TransacaoRequest request) {
         Transacao transacao = buscarEntidade(id);
+        validarEdicaoManual(transacao);
         atualizarDados(transacao, request);
         return paraResponse(transacaoRepository.save(transacao));
     }
 
     @Transactional
     public void excluir(Long id) {
-        transacaoRepository.delete(buscarEntidade(id));
+        Transacao transacao = buscarEntidade(id);
+        validarEdicaoManual(transacao);
+        transacaoRepository.delete(transacao);
     }
 
     private Transacao buscarEntidade(Long id) {
@@ -115,6 +119,13 @@ public class TransacaoService {
         transacao.setTipo(request.tipo());
         transacao.setConta(conta);
         transacao.setCategoria(categoria);
+        transacao.setNatureza(NaturezaTransacao.LANCAMENTO);
+    }
+
+    private void validarEdicaoManual(Transacao transacao) {
+        if (transacao.getNatureza() == NaturezaTransacao.PAGAMENTO_FATURA) {
+            throw new RegraNegocioException("Pagamentos de fatura devem ser alterados na área de cartões");
+        }
     }
 
     private TransacaoResponse paraResponse(Transacao transacao) {
@@ -122,6 +133,7 @@ public class TransacaoService {
                 ? null
                 : transacao.getRecorrencia().getId();
 
+        Categoria categoria = transacao.getCategoria();
         return new TransacaoResponse(
                 transacao.getId(),
                 transacao.getDescricao(),
@@ -130,9 +142,10 @@ public class TransacaoService {
                 transacao.getTipo(),
                 transacao.getConta().getId(),
                 transacao.getConta().getNome(),
-                transacao.getCategoria().getId(),
-                transacao.getCategoria().getNome(),
-                recorrenciaId
+                categoria == null ? null : categoria.getId(),
+                categoria == null ? null : categoria.getNome(),
+                recorrenciaId,
+                transacao.getNatureza() == null ? NaturezaTransacao.LANCAMENTO : transacao.getNatureza()
         );
     }
 }
