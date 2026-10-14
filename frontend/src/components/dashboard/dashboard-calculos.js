@@ -106,7 +106,7 @@ export function saldoAte(contas, transacoes, dataLimite, contaId = "") {
   return inicial + soma(movimentos, (item) => item.tipo === "RECEITA" ? item.valor : -Number(item.valor));
 }
 
-export function resumoMes({ transacoes, recorrencias, contas, chave, contaId = "", categoriaId = "", taxaMeta = 20, hoje = new Date() }) {
+export function resumoMes({ transacoes, recorrencias, contas, compromissosCartao = [], chave, contaId = "", categoriaId = "", taxaMeta = 20, hoje = new Date() }) {
   const { inicio, fim } = limitesMes(chave);
   const hojeNormalizado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12);
   const mesAtual = chaveMes(hojeNormalizado) === chave;
@@ -126,18 +126,20 @@ export function resumoMes({ transacoes, recorrencias, contas, chave, contaId = "
   const futuras = recorrenciasFiltradas.flatMap((item) => ocorrenciasEntre(item, new Date(corte.getTime() + UM_DIA), fim).map((data) => ({ ...item, dataOcorrencia: data })));
   const despesasFuturas = soma(futuras.filter((item) => item.tipo === "DESPESA"), (item) => item.valor);
   const receitasFuturas = soma(futuras.filter((item) => item.tipo === "RECEITA"), (item) => item.valor);
+  const faturasFuturas = compromissosCartao.filter((item) => item.dataOcorrencia >= inicio && item.dataOcorrencia <= fim);
+  const totalFaturasFuturas = soma(faturasFuturas, (item) => item.valor);
   const despesasProjetadas = mesAtual ? Math.max(projecaoRitmo, despesas + despesasFuturas) : despesas;
   const receitasProjetadas = receitas + (mesAtual ? receitasFuturas : 0);
   const resultadoProjetado = receitasProjetadas - despesasProjetadas;
   const poupancaAlvo = receitasProjetadas * (taxaMeta / 100);
   const margemLivre = resultadoProjetado - poupancaAlvo;
   const saldo = saldoAte(contas, transacoes, corte, contaId);
-  const saldoProjetado = saldo + (mesAtual ? receitasFuturas - despesasFuturas : 0);
+  const saldoProjetado = saldo + (mesAtual ? receitasFuturas - despesasFuturas - totalFaturasFuturas : 0);
 
   return {
     inicio, fim, corte, mesAtual, movimentosMes, receitas, despesas, resultado, taxaPoupanca,
     projecaoRitmo, despesasProjetadas, receitasProjetadas, resultadoProjetado, poupancaAlvo,
-    margemLivre, saldo, saldoProjetado, futuras,
+    margemLivre, saldo, saldoProjetado, futuras, faturasFuturas, totalFaturasFuturas,
   };
 }
 
@@ -180,12 +182,13 @@ export function mediasCategorias({ transacoes, chave, contaId = "" }) {
   return new Map([...totais].map(([id, total]) => [id, total / 3]));
 }
 
-export function proximasRecorrencias({ recorrencias, inicio, dias, contaId = "", categoriaId = "" }) {
+export function proximasRecorrencias({ recorrencias, compromissosCartao = [], inicio, dias, contaId = "", categoriaId = "" }) {
   const fim = new Date(inicio);
   fim.setDate(fim.getDate() + dias);
-  return filtrarRecorrencias(recorrencias, { contaId, categoriaId })
+  const previstas = filtrarRecorrencias(recorrencias, { contaId, categoriaId })
     .flatMap((item) => ocorrenciasEntre(item, inicio, fim).map((data) => ({ ...item, dataOcorrencia: data })))
-    .sort((a, b) => a.dataOcorrencia - b.dataOcorrencia);
+  const faturas = compromissosCartao.filter((item) => item.dataOcorrencia >= inicio && item.dataOcorrencia <= fim);
+  return [...previstas, ...faturas].sort((a, b) => a.dataOcorrencia - b.dataOcorrencia);
 }
 
 export function compromissoFixo({ recorrencias, receitas, chave, contaId = "", categoriaId = "" }) {
@@ -197,13 +200,16 @@ export function compromissoFixo({ recorrencias, receitas, chave, contaId = "", c
   return { total, percentual: receitas > 0 ? (total / receitas) * 100 : 0 };
 }
 
-export function previsaoProximoMes({ recorrencias, chave, contaId = "", categoriaId = "" }) {
+export function previsaoProximoMes({ recorrencias, compromissosCartao = [], chave, contaId = "", categoriaId = "" }) {
   const { inicio } = limitesMes(chave);
   const referencia = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 1, 12);
   const fim = new Date(referencia.getFullYear(), referencia.getMonth() + 1, 0, 12);
   const ocorrencias = filtrarRecorrencias(recorrencias, { contaId, categoriaId })
     .flatMap((item) => ocorrenciasEntre(item, referencia, fim).map((data) => ({ ...item, dataOcorrencia: data })));
   const receitas = soma(ocorrencias.filter((item) => item.tipo === "RECEITA"), (item) => item.valor);
-  const despesas = soma(ocorrencias.filter((item) => item.tipo === "DESPESA"), (item) => item.valor);
-  return { referencia, ocorrencias, receitas, despesas, necessidade: Math.max(despesas - receitas, 0), resultado: receitas - despesas };
+  const despesasRecorrentes = soma(ocorrencias.filter((item) => item.tipo === "DESPESA"), (item) => item.valor);
+  const faturas = compromissosCartao.filter((item) => item.dataOcorrencia >= referencia && item.dataOcorrencia <= fim);
+  const totalFaturas = soma(faturas, (item) => item.valor);
+  const despesas = despesasRecorrentes + totalFaturas;
+  return { referencia, ocorrencias: [...ocorrencias, ...faturas], receitas, despesas, despesasRecorrentes, faturas: totalFaturas, necessidade: Math.max(despesas - receitas, 0), resultado: receitas - despesas };
 }
