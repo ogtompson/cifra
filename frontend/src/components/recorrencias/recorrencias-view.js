@@ -6,6 +6,7 @@ import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Icone } from "@/components/icons";
 import { botaoPrimario, botaoSecundario, campo, Confirmacao, ErroFormulario, EsqueletoBloco, EsqueletoLista, EstadoVazio, FeedbackErro, FiltroSegmentado, ModalPadrao, NavegacaoMes, SelectCampo, Switch } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import { compromissosDeFaturas } from "@/lib/faturas";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
@@ -14,12 +15,16 @@ const frequencias = { SEMANAL: "Semanal", MENSAL: "Mensal", ANUAL: "Anual" };
 const diasSemana = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 async function buscarDados() {
-  const [recorrencias, contas, categorias] = await Promise.all([apiFetch("/recorrencias"), apiFetch("/contas"), apiFetch("/categorias")]);
-  return { recorrencias, contas, categorias };
+  const [recorrencias, contas, categorias, cartoes] = await Promise.all([apiFetch("/recorrencias"), apiFetch("/contas"), apiFetch("/categorias"), apiFetch("/cartoes")]);
+  return { recorrencias, contas, categorias, cartoes };
 }
 
 function criarData(iso) {
   return new Date(`${iso}T12:00:00`);
+}
+
+function inicioDoMes(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function proximaOcorrencia(item) {
@@ -151,7 +156,7 @@ function GrupoRecorrencias({ titulo, descricao, itens, carregando, aoEditar, aoA
 function DetalhesDia({ dia, referencia, itens, alinharDireita, aoFechar, aoEditar, aoAlternar, aoExcluir }) {
   const data = new Date(referencia.getFullYear(), referencia.getMonth(), dia, 12);
   const dataPorExtenso = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(data);
-  const saldo = itens.reduce((total, item) => total + (item.tipo === "RECEITA" ? Number(item.valor) : -Number(item.valor)), 0);
+  const saldo = itens.filter((item) => !item.paga).reduce((total, item) => total + (item.tipo === "RECEITA" ? Number(item.valor) : -Number(item.valor)), 0);
 
   return (
     <Popover placement={alinharDireita ? "bottom end" : "bottom start"} offset={7} containerPadding={16} shouldFlip className="z-50 max-h-[calc(100dvh-2rem)] w-[min(19rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-primary/10 bg-white shadow-[0_20px_55px_rgba(0,58,48,.2)]" aria-label={`Detalhes de ${dataPorExtenso}`}>
@@ -164,14 +169,15 @@ function DetalhesDia({ dia, referencia, itens, alinharDireita, aoFechar, aoEdita
 
       {itens.length ? <div>{itens.map((item) => {
         const receita = item.tipo === "RECEITA";
+        const fatura = item.origem === "FATURA_CARTAO";
         return (
           <article key={item.id} className="border-b border-primary/7 px-3 py-2.5 last:border-0">
             <div className="flex items-start gap-2">
-              <div className="min-w-0 flex-1"><p className="truncate text-xs font-extrabold text-primary">{item.descricao}</p><p className="mt-0.5 truncate text-[.58rem] text-foreground-soft">{item.categoriaNome} · {item.contaNome}</p></div>
-              <button type="button" onClick={() => aoEditar(item)} className="icon-action !size-8" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button>
-              <button type="button" onClick={() => aoExcluir(item)} className="icon-action !size-8 hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button>
+              <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${fatura ? "bg-secondary/9 text-secondary" : receita ? "bg-positive/9 text-positive" : "bg-primary/[.055] text-primary"}`}><Icone nome={fatura ? "cartoes" : receita ? "setaCima" : "recorrencias"} className="size-3.5" /></span>
+              <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><p className="truncate text-xs font-extrabold text-primary">{item.descricao}</p>{fatura && <span className={`rounded-full px-1.5 py-0.5 text-[.48rem] font-extrabold ${item.paga ? "bg-positive/9 text-positive" : "bg-secondary/8 text-secondary"}`}>{item.paga ? "Paga" : "Em aberto"}</span>}</div><p className="mt-0.5 truncate text-[.58rem] text-foreground-soft">{item.categoriaNome} · {item.contaNome}</p></div>
+              {fatura ? <Link href="/cartoes" className="rounded-full border border-primary/10 px-2.5 py-1.5 text-[.55rem] font-extrabold text-secondary">Ver fatura</Link> : <><button type="button" onClick={() => aoEditar(item)} className="icon-action !size-8" aria-label={`Editar ${item.descricao}`}><Icone nome="editar" className="size-3.5" /></button><button type="button" onClick={() => aoExcluir(item)} className="icon-action !size-8 hover:!bg-error/10 hover:!text-error" aria-label={`Excluir ${item.descricao}`}><Icone nome="excluir" className="size-3.5" /></button></>}
             </div>
-            <div className="mt-2 flex items-center justify-between gap-3"><strong className={`text-[.68rem] ${receita ? "text-positive" : "text-primary"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong><Switch compacto selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} /></div>
+            <div className="mt-2 flex items-center justify-between gap-3"><strong className={`text-[.68rem] ${receita ? "text-positive" : "text-primary"}`}>{receita ? "+" : "−"} {moeda.format(item.valor)}</strong>{!fatura && <Switch compacto selecionado={item.ativa} aoAlterar={() => aoAlternar(item)} rotulo={`${item.ativa ? "Pausar" : "Reativar"} ${item.descricao}`} />}</div>
           </article>
         );
       })}</div> : <EstadoVazio compacto icone="calendario" titulo="Nenhum compromisso neste dia" className="!min-h-0 !py-6" />}
@@ -192,7 +198,7 @@ function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecio
   return (
     <section className="paper-card mt-5 rounded-[1.5rem] p-4 sm:p-5">
       <header><h2 className="text-sm font-extrabold capitalize text-primary">Calendário de {nomeMes.format(referencia)}</h2><p className="mt-0.5 text-xs text-foreground-soft">Quando cada compromisso cai no mês</p></header>
-      <div className="mt-4 flex items-center justify-end gap-4 text-[.62rem] text-foreground-soft"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error" />Despesa</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-[#eab35c]" />Receita</span></div>
+      <div className="mt-4 flex items-center justify-end gap-4 text-[.62rem] text-foreground-soft"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-error" />Despesa</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-[#eab35c]" />Receita</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-secondary" />Fatura</span></div>
       <div className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">
         {diasSemana.map((dia, indice) => <span key={`${dia}-${indice}`} className="py-1 text-center text-[.62rem] font-bold text-foreground-soft">{dia}</span>)}
         {celulas.map((dia, indice) => {
@@ -205,20 +211,22 @@ function CalendarioRecorrencias({ referencia, eventos, diaSelecionado, aoSelecio
             <DialogTrigger key={indice} isOpen={selecionado} onOpenChange={(aberto) => aoSelecionarDia(aberto ? dia : null)}>
               <Button className={`h-full min-h-16 w-full overflow-hidden rounded-xl border p-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-secondary/45 sm:min-h-24 sm:p-2 ${atual ? `border-2 border-primary bg-primary/[0.035] shadow-[inset_0_0_0_1px_rgba(0,58,48,.08)] hover:bg-primary/[0.065] ${selecionado ? "ring-2 ring-secondary/45" : ""}` : selecionado ? "border-primary bg-primary/[0.09] shadow-[inset_0_0_0_1px_rgba(0,58,48,.18)]" : "border-transparent bg-primary/[0.045] hover:border-primary/15 hover:bg-primary/[0.065]"}`} aria-label={`Dia ${dia}${itens.length ? `, ${itens.length} compromisso${itens.length > 1 ? "s" : ""}` : ", sem compromissos"}`}>
                 <span className="text-[.62rem] font-extrabold text-primary sm:text-xs">{dia}</span>
-                {itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <span key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`block truncate rounded-sm bg-white px-1 py-0.5 text-[.48rem] font-semibold shadow-[0_1px_3px_rgba(0,58,48,.08)] sm:text-[.58rem] ${item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}><span className="sm:hidden">{item.descricao}</span><span className="hidden sm:inline">{item.descricao} · {moeda.format(item.valor)}</span></span>)}{itens.length > 2 && <span className="block px-1 text-[.5rem] font-bold text-foreground-soft">+{itens.length - 2} compromissos</span>}</div>}
+                {itens.length > 0 && <div className="mt-1 space-y-1">{itens.slice(0, 2).map((item) => <span key={`${item.id}-${dia}`} title={`${item.descricao}: ${moeda.format(item.valor)}`} className={`block truncate rounded-sm bg-white px-1 py-0.5 text-[.48rem] font-semibold shadow-[0_1px_3px_rgba(0,58,48,.08)] sm:text-[.58rem] ${item.origem === "FATURA_CARTAO" ? item.paga ? "text-positive line-through opacity-65" : "text-secondary" : item.tipo === "RECEITA" ? "text-positive" : "text-primary"}`}><span className="sm:hidden">{item.descricao}</span><span className="hidden sm:inline">{item.descricao} · {moeda.format(item.valor)}</span></span>)}{itens.length > 2 && <span className="block px-1 text-[.5rem] font-bold text-foreground-soft">+{itens.length - 2} compromissos</span>}</div>}
               </Button>
               <DetalhesDia dia={dia} referencia={referencia} itens={itens} alinharDireita={alinharDireita} aoFechar={() => aoSelecionarDia(null)} aoEditar={aoEditar} aoAlternar={aoAlternar} aoExcluir={aoExcluir} />
             </DialogTrigger>
           );
         })}
       </div>
-      <p className="mt-3 text-[.6rem] leading-5 text-foreground-soft">Dias 29, 30 e 31 são ajustados para o último dia em meses mais curtos. Recorrências pausadas não aparecem no calendário.</p>
+      <p className="mt-3 text-[.6rem] leading-5 text-foreground-soft">Dias 29, 30 e 31 são ajustados para o último dia em meses mais curtos. Faturas aparecem no vencimento e são atualizadas pelas compras do cartão.</p>
     </section>
   );
 }
 
 export default function RecorrenciasView() {
-  const [dados, setDados] = useState({ recorrencias: [], contas: [], categorias: [] });
+  const [dados, setDados] = useState({ recorrencias: [], contas: [], categorias: [], cartoes: [] });
+  const [faturasCartao, setFaturasCartao] = useState([]);
+  const [consultaFaturasConcluida, setConsultaFaturasConcluida] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [situacao, setSituacao] = useState("");
@@ -231,13 +239,33 @@ export default function RecorrenciasView() {
 
   const carregar = useCallback(async () => { setCarregando(true); setErro(""); try { setDados(await buscarDados()); } catch (error) { setErro(`${error.message} Verifique se o backend está em execução.`); } finally { setCarregando(false); } }, []);
   useEffect(() => { let ativo = true; buscarDados().then((resultado) => ativo && setDados(resultado)).catch((error) => ativo && setErro(`${error.message} Verifique se o backend está em execução.`)).finally(() => ativo && setCarregando(false)); return () => { ativo = false; }; }, []);
+  useEffect(() => {
+    let ativo = true;
+    const chaveConsulta = `${inicioDoMes(mesReferencia)}:${dados.cartoes.map((cartao) => cartao.id).join(",")}`;
+    Promise.all(dados.cartoes.map((cartao) => apiFetch(`/cartoes/${cartao.id}/faturas?mesReferencia=${inicioDoMes(mesReferencia)}&meses=1`)))
+      .then((faturas) => { if (ativo) setFaturasCartao(faturas); })
+      .catch((error) => { if (ativo) setErro(error.message); })
+      .finally(() => { if (ativo) setConsultaFaturasConcluida(chaveConsulta); });
+    return () => { ativo = false; };
+  }, [dados.cartoes, mesReferencia]);
 
   const filtradas = useMemo(() => dados.recorrencias.filter((item) => !situacao || item.ativa === (situacao === "ATIVA")), [dados.recorrencias, situacao]);
   const separadas = useMemo(() => ({ DESPESA: filtradas.filter((item) => item.tipo === "DESPESA"), RECEITA: filtradas.filter((item) => item.tipo === "RECEITA") }), [filtradas]);
   const totais = useMemo(() => ({ todas: dados.recorrencias.length, ativas: dados.recorrencias.filter((item) => item.ativa).length, pausadas: dados.recorrencias.filter((item) => !item.ativa).length }), [dados.recorrencias]);
-  const ocorrenciasMes = useMemo(() => dados.recorrencias.flatMap((item) => ocorrenciasNoMes(item, mesReferencia).map((data) => ({ item, data }))), [dados.recorrencias, mesReferencia]);
+  const compromissosFatura = useMemo(() => compromissosDeFaturas(dados.cartoes, faturasCartao, { incluirPagas: true }), [dados.cartoes, faturasCartao]);
+  const ocorrenciasMes = useMemo(() => [...dados.recorrencias.flatMap((item) => ocorrenciasNoMes(item, mesReferencia).map((data) => ({ item, data }))), ...compromissosFatura.map((item) => ({ item, data: item.dataOcorrencia }))], [dados.recorrencias, mesReferencia, compromissosFatura]);
   const eventosCalendario = useMemo(() => ocorrenciasMes.reduce((mapa, { item, data }) => mapa.set(data.getDate(), [...(mapa.get(data.getDate()) ?? []), item]), new Map()), [ocorrenciasMes]);
-  const resumoMes = useMemo(() => ocorrenciasMes.reduce((total, { item, data }) => ({ ...total, [item.tipo]: total[item.tipo] + Number(item.valor), PENDENTE: total.PENDENTE + (item.tipo === "DESPESA" && data >= new Date(new Date().setHours(0, 0, 0, 0)) ? Number(item.valor) : 0) }), { RECEITA: 0, DESPESA: 0, PENDENTE: 0 }), [ocorrenciasMes]);
+  const resumoMes = useMemo(() => ocorrenciasMes.reduce((total, { item, data }) => {
+    const fatura = item.origem === "FATURA_CARTAO";
+    return {
+      ...total,
+      [item.tipo]: total[item.tipo] + (fatura ? 0 : Number(item.valor)),
+      FATURAS: total.FATURAS + (fatura ? Number(item.valor) : 0),
+      PENDENTE: total.PENDENTE + (item.tipo === "DESPESA" && ((fatura && !item.paga) || (!fatura && data >= new Date(new Date().setHours(0, 0, 0, 0)))) ? Number(item.valor) : 0),
+    };
+  }, { RECEITA: 0, DESPESA: 0, FATURAS: 0, PENDENTE: 0 }), [ocorrenciasMes]);
+  const chaveConsultaFaturas = `${inicioDoMes(mesReferencia)}:${dados.cartoes.map((cartao) => cartao.id).join(",")}`;
+  const carregandoTudo = carregando || consultaFaturasConcluida !== chaveConsultaFaturas;
 
   function abrirCriacao() { setRecorrenciaEditada(null); setModalAberto(true); }
   function abrirEdicao(item) { setRecorrenciaEditada(item); setModalAberto(true); }
@@ -261,13 +289,14 @@ export default function RecorrenciasView() {
 
       {erro && <FeedbackErro mensagem={erro} aoTentarNovamente={carregar} />}
 
-      {!erro && (carregando ? <section className="mt-6 grid gap-3 md:grid-cols-3" aria-label="Carregando resumo de recorrências"><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /></section> : <section className="content-enter mt-6 grid gap-3 md:grid-cols-3">
+      {!erro && (carregandoTudo ? <section className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Carregando resumo de recorrências"><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /><EsqueletoBloco className="h-28" /></section> : <section className="content-enter mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Despesas fixas</p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.DESPESA)}</strong><p className="mt-2 text-[.65rem] capitalize text-foreground-soft">{nomeMes.format(mesReferencia)}</p></article>
         <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Receitas fixas</p><strong className="mt-2 block text-xl text-positive">{moeda.format(resumoMes.RECEITA)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Salários, aportes e outras entradas</p></article>
-        <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Ainda a pagar em <span className="capitalize">{new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(mesReferencia)}</span></p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.PENDENTE)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Ocorrências ativas a partir de hoje</p></article>
+        <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Faturas do mês</p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.FATURAS)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Compromissos variáveis dos cartões</p></article>
+        <article className="paper-card rounded-2xl p-4 sm:p-5"><p className="text-xs text-foreground-soft">Ainda a pagar em <span className="capitalize">{new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(mesReferencia)}</span></p><strong className="mt-2 block text-xl text-primary">{moeda.format(resumoMes.PENDENTE)}</strong><p className="mt-2 text-[.65rem] text-foreground-soft">Recorrências futuras e faturas em aberto</p></article>
       </section>)}
 
-      {!erro && (carregando ? <EsqueletoBloco className="mt-5 h-[32rem]" /> : <div className="content-enter"><CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} /></div>)}
+      {!erro && (carregandoTudo ? <EsqueletoBloco className="mt-5 h-[32rem]" /> : <div className="content-enter"><CalendarioRecorrencias referencia={mesReferencia} eventos={eventosCalendario} diaSelecionado={diaSelecionado} aoSelecionarDia={setDiaSelecionado} aoEditar={abrirEdicao} aoAlternar={alternarSituacao} aoExcluir={setRecorrenciaExcluida} /></div>)}
 
       {!erro && !carregando && <div className="content-enter mt-5 flex flex-wrap items-center justify-between gap-3 border-y border-primary/7 py-3">
         <p className="text-xs text-foreground-soft"><strong className="text-primary">{totais.ativas}</strong> ativas · <strong className="text-primary">{totais.pausadas}</strong> pausadas</p>
