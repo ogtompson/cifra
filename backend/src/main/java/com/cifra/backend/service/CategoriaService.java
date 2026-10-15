@@ -8,6 +8,8 @@ import com.cifra.backend.model.Categoria;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
+import com.cifra.backend.repository.TransacaoRecorrenteRepository;
+import com.cifra.backend.repository.TransacaoRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +22,21 @@ public class CategoriaService {
     private final CategoriaRepository categoriaRepository;
     private final OrcamentoCategoriaRepository orcamentoRepository;
     private final CompraCartaoRepository compraCartaoRepository;
+    private final TransacaoRepository transacaoRepository;
+    private final TransacaoRecorrenteRepository recorrenciaRepository;
 
-    public CategoriaService(CategoriaRepository categoriaRepository, OrcamentoCategoriaRepository orcamentoRepository, CompraCartaoRepository compraCartaoRepository) {
+    public CategoriaService(
+            CategoriaRepository categoriaRepository,
+            OrcamentoCategoriaRepository orcamentoRepository,
+            CompraCartaoRepository compraCartaoRepository,
+            TransacaoRepository transacaoRepository,
+            TransacaoRecorrenteRepository recorrenciaRepository
+    ) {
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
         this.compraCartaoRepository = compraCartaoRepository;
+        this.transacaoRepository = transacaoRepository;
+        this.recorrenciaRepository = recorrenciaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -51,8 +63,8 @@ public class CategoriaService {
     public CategoriaResponse atualizar(Long id, CategoriaRequest request) {
         Categoria categoria = buscarEntidade(id);
         if (request.tipo() != categoria.getTipo()
-                && (orcamentoRepository.existsByCategoriaId(id) || compraCartaoRepository.existsByCategoriaId(id))) {
-            throw new RegraNegocioException("A categoria possui orçamentos ou compras no cartão e deve continuar como despesa");
+                && possuiVinculos(id)) {
+            throw new RegraNegocioException("O tipo da categoria não pode mudar enquanto houver movimentações vinculadas");
         }
         atualizarDados(categoria, request);
         return paraResponse(categoriaRepository.save(categoria));
@@ -61,6 +73,12 @@ public class CategoriaService {
     @Transactional
     public void excluir(Long id) {
         Categoria categoria = buscarEntidade(id);
+        if (transacaoRepository.existsByCategoriaId(id)) {
+            throw new RegraNegocioException("A categoria possui transações vinculadas e não pode ser excluída");
+        }
+        if (recorrenciaRepository.existsByCategoriaId(id)) {
+            throw new RegraNegocioException("A categoria possui recorrências vinculadas e não pode ser excluída");
+        }
         if (orcamentoRepository.existsByCategoriaId(id)) {
             throw new RegraNegocioException("A categoria possui orçamentos vinculados e não pode ser excluída");
         }
@@ -68,6 +86,13 @@ public class CategoriaService {
             throw new RegraNegocioException("A categoria possui compras no cartão vinculadas e não pode ser excluída");
         }
         categoriaRepository.delete(categoria);
+    }
+
+    private boolean possuiVinculos(Long categoriaId) {
+        return transacaoRepository.existsByCategoriaId(categoriaId)
+                || recorrenciaRepository.existsByCategoriaId(categoriaId)
+                || orcamentoRepository.existsByCategoriaId(categoriaId)
+                || compraCartaoRepository.existsByCategoriaId(categoriaId);
     }
 
     private Categoria buscarEntidade(Long id) {

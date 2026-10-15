@@ -8,6 +8,8 @@ import com.cifra.backend.model.enums.TipoOperacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
+import com.cifra.backend.repository.TransacaoRecorrenteRepository;
+import com.cifra.backend.repository.TransacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,12 +35,22 @@ class CategoriaServiceTest {
     private OrcamentoCategoriaRepository orcamentoRepository;
     @Mock
     private CompraCartaoRepository compraCartaoRepository;
+    @Mock
+    private TransacaoRepository transacaoRepository;
+    @Mock
+    private TransacaoRecorrenteRepository recorrenciaRepository;
 
     private CategoriaService categoriaService;
 
     @BeforeEach
     void configurar() {
-        categoriaService = new CategoriaService(categoriaRepository, orcamentoRepository, compraCartaoRepository);
+        categoriaService = new CategoriaService(
+                categoriaRepository,
+                orcamentoRepository,
+                compraCartaoRepository,
+                transacaoRepository,
+                recorrenciaRepository
+        );
     }
 
     @Test
@@ -98,7 +110,21 @@ class CategoriaServiceTest {
                 new CategoriaRequest("Mercado", TipoOperacao.RECEITA)
         ))
                 .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
-                .hasMessage("A categoria possui orçamentos ou compras no cartão e deve continuar como despesa");
+                .hasMessage("O tipo da categoria não pode mudar enquanto houver movimentações vinculadas");
+    }
+
+    @Test
+    void deveImpedirMudancaDeTipoComTransacaoVinculada() {
+        Categoria categoria = categoria(1L, "Mercado", TipoOperacao.DESPESA);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(transacaoRepository.existsByCategoriaId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoriaService.atualizar(
+                1L,
+                new CategoriaRequest("Mercado", TipoOperacao.RECEITA)
+        ))
+                .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
+                .hasMessage("O tipo da categoria não pode mudar enquanto houver movimentações vinculadas");
     }
 
     @Test
@@ -120,6 +146,28 @@ class CategoriaServiceTest {
         assertThatThrownBy(() -> categoriaService.excluir(1L))
                 .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
                 .hasMessage("A categoria possui orçamentos vinculados e não pode ser excluída");
+    }
+
+    @Test
+    void deveImpedirExclusaoDeCategoriaComTransacao() {
+        Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(transacaoRepository.existsByCategoriaId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoriaService.excluir(1L))
+                .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
+                .hasMessage("A categoria possui transações vinculadas e não pode ser excluída");
+    }
+
+    @Test
+    void deveImpedirExclusaoDeCategoriaComRecorrencia() {
+        Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(recorrenciaRepository.existsByCategoriaId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoriaService.excluir(1L))
+                .isInstanceOf(com.cifra.backend.exception.RegraNegocioException.class)
+                .hasMessage("A categoria possui recorrências vinculadas e não pode ser excluída");
     }
 
     @Test

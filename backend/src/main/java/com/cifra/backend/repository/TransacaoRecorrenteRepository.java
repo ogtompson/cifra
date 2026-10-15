@@ -13,5 +13,9 @@ public interface TransacaoRecorrenteRepository extends JpaRepository<TransacaoRe
 
     long countByContaId(Long contaId);
 
+    long countByContaIdAndAtivaTrue(Long contaId);
+
+    boolean existsByCategoriaId(Long categoriaId);
+
     long deleteByContaId(Long contaId);
 }
