@@ -91,6 +91,30 @@ class OrcamentoCategoriaServiceTest {
     }
 
     @Test
+    void deveCriarOrcamentoRefletindoGastosJaRealizados() {
+        Categoria moradia = new Categoria(1L, "Moradia", TipoOperacao.DESPESA);
+        TotalPorCategoria total = mock(TotalPorCategoria.class);
+        when(total.getCategoriaId()).thenReturn(1L);
+        when(total.getTotal()).thenReturn(new BigDecimal("650.00"));
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(moradia));
+        when(orcamentoRepository.findByCategoriaIdAndMesReferencia(1L, LocalDate.of(2026, 10, 1))).thenReturn(Optional.empty());
+        when(transacaoRepository.somarPorCategoriaETipoEPeriodo(
+                TipoOperacao.DESPESA,
+                LocalDate.of(2026, 10, 1),
+                LocalDate.of(2026, 10, 31)
+        )).thenReturn(List.of(total));
+        when(orcamentoRepository.save(any())).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        OrcamentoCategoriaResponse resultado = service.criar(
+                new OrcamentoCategoriaRequest(1L, LocalDate.of(2026, 10, 20), new BigDecimal("1000.00"))
+        );
+
+        assertThat(resultado.gastoRealizado()).isEqualByComparingTo("650.00");
+        assertThat(resultado.saldoDisponivel()).isEqualByComparingTo("350.00");
+        assertThat(resultado.percentualUtilizado()).isEqualByComparingTo("65.0");
+    }
+
+    @Test
     void deveRejeitarCategoriaDeReceita() {
         Categoria salario = new Categoria(1L, "Salário", TipoOperacao.RECEITA);
         when(categoriaRepository.findById(1L)).thenReturn(Optional.of(salario));

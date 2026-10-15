@@ -68,7 +68,7 @@ public class OrcamentoCategoriaService {
         orcamento.setCategoria(categoria);
         orcamento.setMesReferencia(mes);
         orcamento.setValorLimite(request.valorLimite());
-        return paraResponse(orcamentoRepository.save(orcamento), BigDecimal.ZERO);
+        return paraResponse(orcamentoRepository.save(orcamento), gastoDaCategoria(categoria.getId(), mes));
     }
 
     @Transactional
