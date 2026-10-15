@@ -93,6 +93,15 @@ public class ContaService {
     @Transactional
     public ContaResponse alterarArquivamento(Long id, ArquivamentoContaRequest request) {
         Conta conta = buscarEntidade(id);
+        if (request.arquivada()) {
+            long recorrenciasAtivas = transacaoRecorrenteRepository.countByContaIdAndAtivaTrue(id);
+            long cartoesVinculados = cartaoCreditoRepository.countByContaPagamentoId(id);
+            if (recorrenciasAtivas > 0 || cartoesVinculados > 0) {
+                throw new RegraNegocioException(
+                        "Pause as recorrências ativas e reassocie os cartões antes de arquivar esta conta"
+                );
+            }
+        }
         conta.setArquivada(request.arquivada());
         return paraResponse(contaRepository.save(conta));
     }

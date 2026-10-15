@@ -142,6 +142,19 @@ class TransacaoRecorrenteServiceTest {
     }
 
     @Test
+    void deveRejeitarRecorrenciaAtivaEmContaArquivada() {
+        conta.setArquivada(true);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+
+        assertThatThrownBy(() -> service.criar(request(
+                Frequencia.MENSAL, 5, LocalDate.of(2026, 9, 1), null, true
+        )))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Uma recorrência ativa não pode usar uma conta arquivada");
+    }
+
+    @Test
     void deveBloquearExclusaoQuandoExistiremTransacoesGeradas() {
         TransacaoRecorrente recorrencia = recorrencia(3L);
         when(recorrenciaRepository.findById(3L)).thenReturn(Optional.of(recorrencia));

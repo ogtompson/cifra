@@ -247,6 +247,9 @@ public class CartaoCreditoService {
         CartaoCredito cartao = buscarCartao(request.cartaoId());
         Categoria categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada com o id " + request.categoriaId()));
+        if (Boolean.TRUE.equals(cartao.getContaPagamento().getArquivada())) {
+            throw new RegraNegocioException("Não é possível registrar compras em um cartão associado a uma conta arquivada");
+        }
         if (categoria.getTipo() != TipoOperacao.DESPESA) {
             throw new RegraNegocioException("Compras no cartão exigem uma categoria de despesa");
         }

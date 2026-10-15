@@ -107,6 +107,10 @@ public class TransacaoService {
         Conta conta = buscarConta(request.contaId());
         Categoria categoria = buscarCategoria(request.categoriaId());
 
+        if (Boolean.TRUE.equals(conta.getArquivada())) {
+            throw new RegraNegocioException("Não é possível lançar movimentações em uma conta arquivada");
+        }
+
         if (categoria.getTipo() != request.tipo()) {
             throw new RegraNegocioException(
                     "O tipo da categoria deve ser igual ao tipo da transação"

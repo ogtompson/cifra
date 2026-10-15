@@ -112,6 +112,10 @@ public class TransacaoRecorrenteService {
         Conta conta = buscarConta(request.contaId());
         Categoria categoria = buscarCategoria(request.categoriaId());
 
+        if (Boolean.TRUE.equals(conta.getArquivada()) && request.ativa()) {
+            throw new RegraNegocioException("Uma recorrência ativa não pode usar uma conta arquivada");
+        }
+
         if (categoria.getTipo() != request.tipo()) {
             throw new RegraNegocioException(
                     "O tipo da categoria deve ser igual ao tipo da recorrência"

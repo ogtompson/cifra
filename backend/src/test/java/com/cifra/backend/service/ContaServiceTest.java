@@ -148,6 +148,21 @@ class ContaServiceTest {
     }
 
     @Test
+    void deveImpedirArquivamentoComCompromissosAtivos() {
+        Conta conta = conta(1L, "Nubank", "120.00", TipoConta.CORRENTE);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(transacaoRecorrenteRepository.countByContaIdAndAtivaTrue(1L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> contaService.alterarArquivamento(
+                1L, new ArquivamentoContaRequest(true)
+        ))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Pause as recorrências ativas e reassocie os cartões antes de arquivar esta conta");
+
+        verify(contaRepository, never()).save(conta);
+    }
+
+    @Test
     void deveExcluirContaSemDependencias() {
         Conta conta = conta(1L, "Carteira", "20.00", TipoConta.DINHEIRO);
         when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));

@@ -31,6 +31,9 @@ public class GeracaoRecorrenciasService {
     public int gerarPendentesAte(LocalDate dataLimite) {
         int totalGerado = 0;
         for (TransacaoRecorrente recorrencia : transacaoRecorrenteRepository.findByAtivaTrue()) {
+            if (Boolean.TRUE.equals(recorrencia.getConta().getArquivada())) {
+                continue;
+            }
             for (LocalDate data : calcularDatasPendentes(recorrencia, dataLimite)) {
                 if (!transacaoRepository.existsByRecorrenciaIdAndData(
                         recorrencia.getId(), data

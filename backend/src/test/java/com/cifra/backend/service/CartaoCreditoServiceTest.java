@@ -110,6 +110,21 @@ class CartaoCreditoServiceTest {
     }
 
     @Test
+    void deveRejeitarCompraQuandoContaDoCartaoEstaArquivada() {
+        conta.setArquivada(true);
+        when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+
+        CompraCartaoRequest request = new CompraCartaoRequest(
+                "Viagem", new BigDecimal("200.00"), LocalDate.of(2026, 10, 13), 1, 3L, 2L
+        );
+
+        assertThatThrownBy(() -> service.criarCompra(request))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Não é possível registrar compras em um cartão associado a uma conta arquivada");
+    }
+
+    @Test
     void devePagarFaturaCriandoSaidaEspecialNaConta() {
         CompraCartao compra = new CompraCartao(4L, "Notebook", new BigDecimal("900.00"), LocalDate.of(2026, 10, 20), 3, cartao, categoria);
         when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));

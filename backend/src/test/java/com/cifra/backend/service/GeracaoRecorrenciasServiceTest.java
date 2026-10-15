@@ -114,6 +114,20 @@ class GeracaoRecorrenciasServiceTest {
         verify(transacaoRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    void naoDeveGerarEmContaArquivada() {
+        TransacaoRecorrente recorrencia = recorrencia(
+                Frequencia.MENSAL, 10, LocalDate.of(2026, 10, 1), null
+        );
+        recorrencia.getConta().setArquivada(true);
+        when(recorrenciaRepository.findByAtivaTrue()).thenReturn(List.of(recorrencia));
+
+        int quantidade = service.gerarPendentesAte(LocalDate.of(2026, 10, 31));
+
+        assertThat(quantidade).isZero();
+        verify(transacaoRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
     private TransacaoRecorrente recorrencia(
             Frequencia frequencia,
             Integer diaDoMes,

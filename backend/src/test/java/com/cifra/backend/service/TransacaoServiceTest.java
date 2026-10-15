@@ -88,6 +88,17 @@ class TransacaoServiceTest {
     }
 
     @Test
+    void deveRejeitarLancamentoEmContaArquivada() {
+        conta.setArquivada(true);
+        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+
+        assertThatThrownBy(() -> transacaoService.criar(request(TipoOperacao.DESPESA, 1L, 2L)))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Não é possível lançar movimentações em uma conta arquivada");
+    }
+
+    @Test
     void deveListarTransacoesFiltradasPorConta() {
         Transacao transacao = transacao(4L);
         when(contaRepository.existsById(1L)).thenReturn(true);
