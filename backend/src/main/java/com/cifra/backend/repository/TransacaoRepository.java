@@ -3,6 +3,7 @@ package com.cifra.backend.repository;
 import com.cifra.backend.model.Transacao;
 import com.cifra.backend.model.enums.TipoOperacao;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,6 +21,10 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
     long deleteByContaId(Long contaId);
 
     boolean existsByRecorrenciaId(Long recorrenciaId);
+
+    @Modifying
+    @Query("update Transacao transacao set transacao.recorrencia = null where transacao.recorrencia.id = :recorrenciaId")
+    int desvincularRecorrencia(@Param("recorrenciaId") Long recorrenciaId);
 
     boolean existsByRecorrenciaIdAndData(Long recorrenciaId, LocalDate data);
 

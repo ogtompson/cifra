@@ -75,9 +75,7 @@ public class TransacaoRecorrenteService {
     public void excluir(Long id) {
         TransacaoRecorrente recorrencia = buscarEntidade(id);
         if (transacaoRepository.existsByRecorrenciaId(id)) {
-            throw new RegraNegocioException(
-                    "A recorrência não pode ser excluída porque possui transações geradas"
-            );
+            transacaoRepository.desvincularRecorrencia(id);
         }
         transacaoRecorrenteRepository.delete(recorrencia);
     }
