@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Icone } from "@/components/icons";
 
 const navegacao = [
@@ -37,10 +38,28 @@ function ItemNavegacao({ item, ativo, mobile = false }) {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { usuario, autenticado, carregando, sair } = useAuth();
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const rotaPublica = pathname === "/entrar" || pathname === "/cadastro";
   const rotasPrincipaisMobile = new Set(["/", "/dashboard", "/contas", "/transacoes"]);
   const navegacaoPrincipalMobile = navegacao.filter((item) => rotasPrincipaisMobile.has(item.href));
   const navegacaoSecundariaMobile = navegacao.filter((item) => !rotasPrincipaisMobile.has(item.href));
+
+  useEffect(() => {
+    if (!rotaPublica && !carregando && !autenticado) router.replace("/entrar");
+  }, [rotaPublica, carregando, autenticado, router]);
+
+  if (rotaPublica) return children;
+  if (carregando || !autenticado) return <CarregandoSessao />;
+
+  const nomeUsuario = usuario?.nome || "Usuário";
+  const inicial = nomeUsuario.trim().charAt(0).toUpperCase() || "U";
+
+  async function encerrarSessao() {
+    await sair();
+    router.replace("/entrar");
+  }
 
   return (
     <div className="app-frame min-h-screen lg:grid lg:grid-cols-[5.75rem_1fr]">
@@ -52,16 +71,16 @@ export default function AppShell({ children }) {
         <nav className="mt-8 flex flex-col gap-1" aria-label="Navegação principal">
           {navegacao.map((item) => <ItemNavegacao key={item.nome} item={item} ativo={pathname === item.href} />)}
         </nav>
-        <div className="mt-auto flex items-center gap-3 border-t border-white/8 px-3 pt-5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-xs font-extrabold text-white">P</span>
-          <div className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100"><p className="text-xs font-bold text-white/80">Paulo</p><p className="mt-0.5 text-[.65rem] text-white/35">Perfil pessoal</p></div>
-        </div>
+        <button type="button" onClick={encerrarSessao} title="Sair da conta" className="mt-auto flex items-center gap-3 border-t border-white/8 px-3 pt-5 text-left">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-xs font-extrabold text-white">{inicial}</span>
+          <div className="max-w-[10.5rem] whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100"><p className="truncate text-xs font-bold text-white/80">{nomeUsuario}</p><p className="mt-0.5 text-[.65rem] text-white/35">Clique para sair</p></div>
+        </button>
       </aside>
 
       <div className="min-w-0 pb-20 lg:pb-0">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-primary/7 bg-background/88 px-4 backdrop-blur-xl sm:px-5 lg:hidden">
           <Image src="/logomarca/cifra-horizontal-verde.png" alt="Cifra" width={765} height={326} priority className="h-auto w-24" />
-          <span className="grid size-8 place-items-center rounded-full border border-primary/10 bg-white/65 text-xs font-extrabold text-primary">P</span>
+          <button type="button" onClick={encerrarSessao} title="Sair da conta" className="grid size-8 place-items-center rounded-full border border-primary/10 bg-white/65 text-xs font-extrabold text-primary">{inicial}</button>
         </header>
         <div key={pathname} className="page-transition">{children}</div>
       </div>
@@ -77,5 +96,16 @@ export default function AppShell({ children }) {
         <button type="button" onClick={() => setMenuMobileAberto((aberto) => !aberto)} className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-2 text-[.58rem] font-semibold ${menuMobileAberto || navegacaoSecundariaMobile.some((item) => item.href === pathname) ? "text-primary" : "text-foreground-soft"}`} aria-expanded={menuMobileAberto}><span className={`grid size-8 place-items-center rounded-xl ${menuMobileAberto || navegacaoSecundariaMobile.some((item) => item.href === pathname) ? "bg-primary text-white" : ""}`}><Icone nome="outros" className="size-4" /></span><span>Mais</span></button>
       </nav>
     </div>
+  );
+}
+
+function CarregandoSessao() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-app-surface px-4" aria-live="polite">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <Image src="/logomarca/simbolo-bau-3d.png" alt="" width={64} height={64} className="size-14 animate-pulse object-contain" />
+        <p className="text-sm font-bold text-primary/65">Preparando seu Cifra…</p>
+      </div>
+    </main>
   );
 }

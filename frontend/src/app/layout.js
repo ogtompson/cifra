@@ -1,5 +1,6 @@
 import "@fontsource-variable/manrope";
 import AppShell from "@/components/app-shell";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import "./globals.css";
 
 export const metadata = {
@@ -14,7 +15,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body>
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );
