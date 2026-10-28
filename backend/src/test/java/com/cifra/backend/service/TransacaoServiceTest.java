@@ -13,6 +13,7 @@ import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TransacaoServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private TransacaoRepository transacaoRepository;
     @Mock
@@ -50,7 +53,8 @@ class TransacaoServiceTest {
         transacaoService = new TransacaoService(
                 transacaoRepository,
                 contaRepository,
-                categoriaRepository
+                categoriaRepository,
+                new UsuarioAtualFixo(USUARIO_ID)
         );
         conta = new Conta(1L, "Conta corrente", BigDecimal.ZERO, TipoConta.CORRENTE);
         categoriaDespesa = new Categoria(2L, "Alimentação", TipoOperacao.DESPESA);
@@ -59,8 +63,8 @@ class TransacaoServiceTest {
     @Test
     void deveCriarTransacaoManualComValorPositivo() {
         TransacaoRequest request = request(TipoOperacao.DESPESA, 1L, 2L);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoriaDespesa));
         when(transacaoRepository.save(any(Transacao.class))).thenAnswer(invocacao -> {
             Transacao transacao = invocacao.getArgument(0);
             transacao.setId(3L);
@@ -79,8 +83,8 @@ class TransacaoServiceTest {
     @Test
     void deveRejeitarCategoriaComTipoDiferenteDaTransacao() {
         TransacaoRequest request = request(TipoOperacao.RECEITA, 1L, 2L);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoriaDespesa));
 
         assertThatThrownBy(() -> transacaoService.criar(request))
                 .isInstanceOf(RegraNegocioException.class)
@@ -90,8 +94,8 @@ class TransacaoServiceTest {
     @Test
     void deveRejeitarLancamentoEmContaArquivada() {
         conta.setArquivada(true);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoriaDespesa));
 
         assertThatThrownBy(() -> transacaoService.criar(request(TipoOperacao.DESPESA, 1L, 2L)))
                 .isInstanceOf(RegraNegocioException.class)
@@ -101,8 +105,8 @@ class TransacaoServiceTest {
     @Test
     void deveListarTransacoesFiltradasPorConta() {
         Transacao transacao = transacao(4L);
-        when(contaRepository.existsById(1L)).thenReturn(true);
-        when(transacaoRepository.findByContaIdOrderByDataDescIdDesc(1L))
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(transacaoRepository.findByContaIdAndContaUsuarioIdOrderByDataDescIdDesc(1L, USUARIO_ID))
                 .thenReturn(List.of(transacao));
 
         List<TransacaoResponse> resultado = transacaoService.listar(1L);
@@ -113,7 +117,7 @@ class TransacaoServiceTest {
 
     @Test
     void deveListarTodasAsTransacoes() {
-        when(transacaoRepository.findAll(any(Sort.class)))
+        when(transacaoRepository.findByContaUsuarioId(org.mockito.ArgumentMatchers.eq(USUARIO_ID), any(Sort.class)))
                 .thenReturn(List.of(transacao(4L)));
 
         List<TransacaoResponse> resultado = transacaoService.listar(null);
@@ -123,7 +127,7 @@ class TransacaoServiceTest {
 
     @Test
     void deveInformarQuandoContaDoFiltroNaoExistir() {
-        when(contaRepository.existsById(99L)).thenReturn(false);
+        when(contaRepository.findByIdAndUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transacaoService.listar(99L))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
@@ -131,9 +135,17 @@ class TransacaoServiceTest {
     }
 
     @Test
+    void deveOcultarTransacaoQuePertenceAOutroUsuario() {
+        when(transacaoRepository.findByIdAndContaUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transacaoService.buscarPorId(99L))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
     void deveExcluirTransacaoExistente() {
         Transacao transacao = transacao(4L);
-        when(transacaoRepository.findById(4L)).thenReturn(Optional.of(transacao));
+        when(transacaoRepository.findByIdAndContaUsuarioId(4L, USUARIO_ID)).thenReturn(Optional.of(transacao));
 
         transacaoService.excluir(4L);
 
@@ -145,7 +157,7 @@ class TransacaoServiceTest {
         Transacao pagamento = transacao(5L);
         pagamento.setNatureza(NaturezaTransacao.PAGAMENTO_FATURA);
         pagamento.setCategoria(null);
-        when(transacaoRepository.findById(5L)).thenReturn(Optional.of(pagamento));
+        when(transacaoRepository.findByIdAndContaUsuarioId(5L, USUARIO_ID)).thenReturn(Optional.of(pagamento));
 
         assertThatThrownBy(() -> transacaoService.excluir(5L))
                 .isInstanceOf(RegraNegocioException.class)

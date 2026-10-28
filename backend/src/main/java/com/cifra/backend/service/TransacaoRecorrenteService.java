@@ -12,6 +12,7 @@ import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,17 +26,20 @@ public class TransacaoRecorrenteService {
     private final TransacaoRepository transacaoRepository;
     private final ContaRepository contaRepository;
     private final CategoriaRepository categoriaRepository;
+    private final UsuarioAtual usuarioAtual;
 
     public TransacaoRecorrenteService(
             TransacaoRecorrenteRepository transacaoRecorrenteRepository,
             TransacaoRepository transacaoRepository,
             ContaRepository contaRepository,
-            CategoriaRepository categoriaRepository
+            CategoriaRepository categoriaRepository,
+            UsuarioAtual usuarioAtual
     ) {
         this.transacaoRecorrenteRepository = transacaoRecorrenteRepository;
         this.transacaoRepository = transacaoRepository;
         this.contaRepository = contaRepository;
         this.categoriaRepository = categoriaRepository;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
@@ -43,8 +47,8 @@ public class TransacaoRecorrenteService {
         Sort ordem = Sort.by(Sort.Direction.ASC, "descricao")
                 .and(Sort.by(Sort.Direction.ASC, "id"));
         List<TransacaoRecorrente> recorrencias = ativa == null
-                ? transacaoRecorrenteRepository.findAll(ordem)
-                : transacaoRecorrenteRepository.findByAtiva(ativa, ordem);
+                ? transacaoRecorrenteRepository.findByContaUsuarioId(usuarioAtual.id(), ordem)
+                : transacaoRecorrenteRepository.findByAtivaAndContaUsuarioId(ativa, usuarioAtual.id(), ordem);
 
         return recorrencias.stream().map(this::paraResponse).toList();
     }
@@ -81,21 +85,21 @@ public class TransacaoRecorrenteService {
     }
 
     private TransacaoRecorrente buscarEntidade(Long id) {
-        return transacaoRecorrenteRepository.findById(id)
+        return transacaoRecorrenteRepository.findByIdAndContaUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Recorrência não encontrada com o id " + id
                 ));
     }
 
     private Conta buscarConta(Long id) {
-        return contaRepository.findById(id)
+        return contaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Conta não encontrada com o id " + id
                 ));
     }
 
     private Categoria buscarCategoria(Long id) {
-        return categoriaRepository.findById(id)
+        return categoriaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Categoria não encontrada com o id " + id
                 ));

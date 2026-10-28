@@ -11,6 +11,7 @@ import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,17 +32,20 @@ public class OrcamentoCategoriaService {
     private final CategoriaRepository categoriaRepository;
     private final TransacaoRepository transacaoRepository;
     private final CompraCartaoRepository compraCartaoRepository;
+    private final UsuarioAtual usuarioAtual;
 
     public OrcamentoCategoriaService(
             OrcamentoCategoriaRepository orcamentoRepository,
             CategoriaRepository categoriaRepository,
             TransacaoRepository transacaoRepository,
-            CompraCartaoRepository compraCartaoRepository
+            CompraCartaoRepository compraCartaoRepository,
+            UsuarioAtual usuarioAtual
     ) {
         this.orcamentoRepository = orcamentoRepository;
         this.categoriaRepository = categoriaRepository;
         this.transacaoRepository = transacaoRepository;
         this.compraCartaoRepository = compraCartaoRepository;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +53,10 @@ public class OrcamentoCategoriaService {
         LocalDate mes = normalizarMes(mesReferencia);
         Map<Long, BigDecimal> gastos = gastosPorCategoria(mes);
 
-        return orcamentoRepository.findByMesReferenciaOrderByCategoriaNomeAsc(mes)
+        return orcamentoRepository.findByCategoriaUsuarioIdAndMesReferenciaOrderByCategoriaNomeAsc(
+                        usuarioAtual.id(),
+                        mes
+                )
                 .stream()
                 .map(orcamento -> paraResponse(
                         orcamento,
@@ -90,7 +97,7 @@ public class OrcamentoCategoriaService {
     }
 
     private Categoria buscarCategoriaDeDespesa(Long id) {
-        Categoria categoria = categoriaRepository.findById(id)
+        Categoria categoria = categoriaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada com o id " + id));
         if (categoria.getTipo() != TipoOperacao.DESPESA) {
             throw new RegraNegocioException("Orçamentos só podem ser definidos para categorias de despesa");
@@ -99,7 +106,7 @@ public class OrcamentoCategoriaService {
     }
 
     private OrcamentoCategoria buscarEntidade(Long id) {
-        return orcamentoRepository.findById(id)
+        return orcamentoRepository.findByIdAndCategoriaUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Orçamento não encontrado com o id " + id));
     }
 
@@ -116,9 +123,9 @@ public class OrcamentoCategoriaService {
     private Map<Long, BigDecimal> gastosPorCategoria(LocalDate mes) {
         LocalDate fim = mes.withDayOfMonth(mes.lengthOfMonth());
         Map<Long, BigDecimal> gastos = new java.util.HashMap<>();
-        transacaoRepository.somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, mes, fim)
+        transacaoRepository.somarPorCategoriaETipoEPeriodo(usuarioAtual.id(), TipoOperacao.DESPESA, mes, fim)
                 .forEach(total -> gastos.merge(total.getCategoriaId(), total.getTotal(), BigDecimal::add));
-        compraCartaoRepository.somarPorCategoriaEPeriodo(mes, fim)
+        compraCartaoRepository.somarPorCategoriaEPeriodo(usuarioAtual.id(), mes, fim)
                 .forEach(total -> gastos.merge(total.getCategoriaId(), total.getTotal(), BigDecimal::add));
         return gastos;
     }

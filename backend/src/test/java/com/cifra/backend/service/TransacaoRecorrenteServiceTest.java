@@ -13,6 +13,7 @@ import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TransacaoRecorrenteServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private TransacaoRecorrenteRepository recorrenciaRepository;
 
@@ -58,7 +61,8 @@ class TransacaoRecorrenteServiceTest {
                 recorrenciaRepository,
                 transacaoRepository,
                 contaRepository,
-                categoriaRepository
+                categoriaRepository,
+                new UsuarioAtualFixo(USUARIO_ID)
         );
         conta = new Conta(1L, "Conta corrente", BigDecimal.ZERO, TipoConta.CORRENTE);
         categoriaDespesa = new Categoria(2L, "Moradia", TipoOperacao.DESPESA);
@@ -66,8 +70,8 @@ class TransacaoRecorrenteServiceTest {
 
     @Test
     void deveCriarRecorrenciaMensal() {
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoriaDespesa));
         when(recorrenciaRepository.save(any())).thenAnswer(invocacao -> {
             TransacaoRecorrente recorrencia = invocacao.getArgument(0);
             recorrencia.setId(3L);
@@ -89,7 +93,9 @@ class TransacaoRecorrenteServiceTest {
     @Test
     void deveListarFiltrandoPorSituacao() {
         TransacaoRecorrente recorrencia = recorrencia(3L);
-        when(recorrenciaRepository.findByAtiva(any(Boolean.class), any(Sort.class)))
+        when(recorrenciaRepository.findByAtivaAndContaUsuarioId(
+                any(Boolean.class), org.mockito.ArgumentMatchers.eq(USUARIO_ID), any(Sort.class)
+        ))
                 .thenReturn(List.of(recorrencia));
 
         List<TransacaoRecorrenteResponse> resultado = service.listar(true);
@@ -132,8 +138,8 @@ class TransacaoRecorrenteServiceTest {
     @Test
     void deveRejeitarCategoriaComTipoIncompativel() {
         Categoria categoriaReceita = new Categoria(2L, "Salário", TipoOperacao.RECEITA);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaReceita));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoriaReceita));
 
         assertThatThrownBy(() -> service.criar(request(
                 Frequencia.MENSAL, 5, LocalDate.of(2026, 9, 1), null, true
@@ -145,8 +151,8 @@ class TransacaoRecorrenteServiceTest {
     @Test
     void deveRejeitarRecorrenciaAtivaEmContaArquivada() {
         conta.setArquivada(true);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoriaDespesa));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoriaDespesa));
 
         assertThatThrownBy(() -> service.criar(request(
                 Frequencia.MENSAL, 5, LocalDate.of(2026, 9, 1), null, true
@@ -158,7 +164,7 @@ class TransacaoRecorrenteServiceTest {
     @Test
     void devePreservarHistoricoAoExcluirRecorrenciaComTransacoesGeradas() {
         TransacaoRecorrente recorrencia = recorrencia(3L);
-        when(recorrenciaRepository.findById(3L)).thenReturn(Optional.of(recorrencia));
+        when(recorrenciaRepository.findByIdAndContaUsuarioId(3L, USUARIO_ID)).thenReturn(Optional.of(recorrencia));
         when(transacaoRepository.existsByRecorrenciaId(3L)).thenReturn(true);
 
         service.excluir(3L);
@@ -171,7 +177,7 @@ class TransacaoRecorrenteServiceTest {
     @Test
     void deveExcluirRecorrenciaSemTransacoesGeradas() {
         TransacaoRecorrente recorrencia = recorrencia(3L);
-        when(recorrenciaRepository.findById(3L)).thenReturn(Optional.of(recorrencia));
+        when(recorrenciaRepository.findByIdAndContaUsuarioId(3L, USUARIO_ID)).thenReturn(Optional.of(recorrencia));
 
         service.excluir(3L);
 

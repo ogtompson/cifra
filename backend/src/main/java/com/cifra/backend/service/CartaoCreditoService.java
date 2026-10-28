@@ -23,6 +23,7 @@ import com.cifra.backend.repository.CompraCartaoRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.PagamentoFaturaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +50,7 @@ public class CartaoCreditoService {
     private final PagamentoFaturaRepository pagamentoRepository;
     private final TransacaoRepository transacaoRepository;
     private final Clock clock;
+    private final UsuarioAtual usuarioAtual;
 
     public CartaoCreditoService(
             CartaoCreditoRepository cartaoRepository,
@@ -57,7 +59,8 @@ public class CartaoCreditoService {
             CategoriaRepository categoriaRepository,
             PagamentoFaturaRepository pagamentoRepository,
             TransacaoRepository transacaoRepository,
-            Clock clock
+            Clock clock,
+            UsuarioAtual usuarioAtual
     ) {
         this.cartaoRepository = cartaoRepository;
         this.compraRepository = compraRepository;
@@ -66,11 +69,12 @@ public class CartaoCreditoService {
         this.pagamentoRepository = pagamentoRepository;
         this.transacaoRepository = transacaoRepository;
         this.clock = clock;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
     public List<CartaoCreditoResponse> listarCartoes() {
-        return cartaoRepository.findAllByOrderByNomeAsc().stream()
+        return cartaoRepository.findByContaPagamentoUsuarioIdOrderByNomeAsc(usuarioAtual.id()).stream()
                 .map(cartao -> paraCartaoResponse(cartao, calcularLimiteUtilizado(cartao)))
                 .toList();
     }
@@ -111,8 +115,11 @@ public class CartaoCreditoService {
     public List<CompraCartaoResponse> listarCompras(Long cartaoId) {
         if (cartaoId != null) buscarCartao(cartaoId);
         List<CompraCartao> compras = cartaoId == null
-                ? compraRepository.findAllByOrderByDataCompraDescIdDesc()
-                : compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(cartaoId);
+                ? compraRepository.findByCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(usuarioAtual.id())
+                : compraRepository.findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(
+                        cartaoId,
+                        usuarioAtual.id()
+                );
         return compras.stream().map(this::paraCompraResponse).toList();
     }
 
@@ -149,7 +156,11 @@ public class CartaoCreditoService {
         }
         CartaoCredito cartao = buscarCartao(cartaoId);
         YearMonth inicio = YearMonth.from(mesReferencia);
-        List<CompraCartao> compras = compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(cartaoId);
+        List<CompraCartao> compras = compraRepository
+                .findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(
+                        cartaoId,
+                        usuarioAtual.id()
+                );
         Map<YearMonth, PagamentoFatura> pagamentos = pagamentosPorMes(cartaoId);
         List<FaturaCartaoResponse> faturas = new ArrayList<>();
         for (int deslocamento = 0; deslocamento < meses; deslocamento++) {
@@ -216,6 +227,7 @@ public class CartaoCreditoService {
 
     @Transactional
     public void desfazerPagamento(Long cartaoId, LocalDate mesReferencia) {
+        buscarCartao(cartaoId);
         LocalDate mes = YearMonth.from(mesReferencia).atDay(1);
         PagamentoFatura pagamento = pagamentoRepository.findByCartaoIdAndMesReferencia(cartaoId, mes)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pagamento da fatura não encontrado"));
@@ -226,7 +238,7 @@ public class CartaoCreditoService {
     }
 
     private void atualizarCartao(CartaoCredito cartao, CartaoCreditoRequest request) {
-        Conta conta = contaRepository.findById(request.contaPagamentoId())
+        Conta conta = contaRepository.findByIdAndUsuarioId(request.contaPagamentoId(), usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Conta não encontrada com o id " + request.contaPagamentoId()));
         if (Boolean.TRUE.equals(conta.getArquivada())) {
             throw new RegraNegocioException("A conta de pagamento precisa estar ativa");
@@ -245,7 +257,7 @@ public class CartaoCreditoService {
 
     private void atualizarCompra(CompraCartao compra, CompraCartaoRequest request) {
         CartaoCredito cartao = buscarCartao(request.cartaoId());
-        Categoria categoria = categoriaRepository.findById(request.categoriaId())
+        Categoria categoria = categoriaRepository.findByIdAndUsuarioId(request.categoriaId(), usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada com o id " + request.categoriaId()));
         if (Boolean.TRUE.equals(cartao.getContaPagamento().getArquivada())) {
             throw new RegraNegocioException("Não é possível registrar compras em um cartão associado a uma conta arquivada");
@@ -263,7 +275,11 @@ public class CartaoCreditoService {
 
     private void validarLimite(CompraCartao compra, Long compraAtualId) {
         Set<YearMonth> mesesPagos = pagamentosPorMes(compra.getCartao().getId()).keySet();
-        BigDecimal utilizado = compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(compra.getCartao().getId()).stream()
+        BigDecimal utilizado = compraRepository
+                .findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(
+                        compra.getCartao().getId(),
+                        usuarioAtual.id()
+                ).stream()
                 .filter(item -> compraAtualId == null || !item.getId().equals(compraAtualId))
                 .flatMap(item -> parcelasDaCompra(item).stream())
                 .filter(parcela -> !mesesPagos.contains(YearMonth.from(parcela.vencimento())))
@@ -276,7 +292,10 @@ public class CartaoCreditoService {
 
     private BigDecimal calcularLimiteUtilizado(CartaoCredito cartao) {
         Set<YearMonth> mesesPagos = pagamentosPorMes(cartao.getId()).keySet();
-        return compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(cartao.getId()).stream()
+        return compraRepository.findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(
+                        cartao.getId(),
+                        usuarioAtual.id()
+                ).stream()
                 .flatMap(compra -> parcelasDaCompra(compra).stream())
                 .filter(parcela -> !mesesPagos.contains(YearMonth.from(parcela.vencimento())))
                 .map(ParcelaFaturaResponse::valor)
@@ -356,12 +375,12 @@ public class CartaoCreditoService {
     }
 
     private CartaoCredito buscarCartao(Long id) {
-        return cartaoRepository.findById(id)
+        return cartaoRepository.findByIdAndContaPagamentoUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cartão não encontrado com o id " + id));
     }
 
     private CompraCartao buscarCompra(Long id) {
-        return compraRepository.findById(id)
+        return compraRepository.findByIdAndCartaoContaPagamentoUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Compra não encontrada com o id " + id));
     }
 

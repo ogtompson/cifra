@@ -10,6 +10,8 @@ import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.UsuarioRepository;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,24 +26,30 @@ public class CategoriaService {
     private final CompraCartaoRepository compraCartaoRepository;
     private final TransacaoRepository transacaoRepository;
     private final TransacaoRecorrenteRepository recorrenciaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final UsuarioAtual usuarioAtual;
 
     public CategoriaService(
             CategoriaRepository categoriaRepository,
             OrcamentoCategoriaRepository orcamentoRepository,
             CompraCartaoRepository compraCartaoRepository,
             TransacaoRepository transacaoRepository,
-            TransacaoRecorrenteRepository recorrenciaRepository
+            TransacaoRecorrenteRepository recorrenciaRepository,
+            UsuarioRepository usuarioRepository,
+            UsuarioAtual usuarioAtual
     ) {
         this.categoriaRepository = categoriaRepository;
         this.orcamentoRepository = orcamentoRepository;
         this.compraCartaoRepository = compraCartaoRepository;
         this.transacaoRepository = transacaoRepository;
         this.recorrenciaRepository = recorrenciaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
     public List<CategoriaResponse> listar() {
-        return categoriaRepository.findAll(Sort.by(Sort.Direction.ASC, "nome"))
+        return categoriaRepository.findByUsuarioId(usuarioAtual.id(), Sort.by(Sort.Direction.ASC, "nome"))
                 .stream()
                 .map(this::paraResponse)
                 .toList();
@@ -56,6 +64,7 @@ public class CategoriaService {
     public CategoriaResponse criar(CategoriaRequest request) {
         Categoria categoria = new Categoria();
         atualizarDados(categoria, request);
+        categoria.setUsuario(usuarioRepository.getReferenceById(usuarioAtual.id()));
         return paraResponse(categoriaRepository.save(categoria));
     }
 
@@ -96,7 +105,7 @@ public class CategoriaService {
     }
 
     private Categoria buscarEntidade(Long id) {
-        return categoriaRepository.findById(id)
+        return categoriaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Categoria não encontrada com o id " + id
                 ));

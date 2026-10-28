@@ -10,6 +10,8 @@ import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.repository.UsuarioRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CategoriaServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private CategoriaRepository categoriaRepository;
     @Mock
@@ -39,6 +43,8 @@ class CategoriaServiceTest {
     private TransacaoRepository transacaoRepository;
     @Mock
     private TransacaoRecorrenteRepository recorrenciaRepository;
+    @Mock
+    private UsuarioRepository usuarioRepository;
 
     private CategoriaService categoriaService;
 
@@ -49,7 +55,9 @@ class CategoriaServiceTest {
                 orcamentoRepository,
                 compraCartaoRepository,
                 transacaoRepository,
-                recorrenciaRepository
+                recorrenciaRepository,
+                usuarioRepository,
+                new UsuarioAtualFixo(USUARIO_ID)
         );
     }
 
@@ -57,7 +65,7 @@ class CategoriaServiceTest {
     void deveListarCategoriasOrdenadasPorNome() {
         Categoria alimentacao = categoria(1L, "Alimentação", TipoOperacao.DESPESA);
         Categoria salario = categoria(2L, "Salário", TipoOperacao.RECEITA);
-        when(categoriaRepository.findAll(any(Sort.class)))
+        when(categoriaRepository.findByUsuarioId(org.mockito.ArgumentMatchers.eq(USUARIO_ID), any(Sort.class)))
                 .thenReturn(List.of(alimentacao, salario));
 
         List<CategoriaResponse> resultado = categoriaService.listar();
@@ -87,7 +95,7 @@ class CategoriaServiceTest {
     @Test
     void deveAtualizarCategoriaExistente() {
         Categoria categoria = categoria(1L, "Mercado", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(categoriaRepository.save(categoria)).thenReturn(categoria);
 
         CategoriaResponse resultado = categoriaService.atualizar(
@@ -102,7 +110,7 @@ class CategoriaServiceTest {
     @Test
     void deveImpedirMudancaDeTipoComOrcamentoVinculado() {
         Categoria categoria = categoria(1L, "Mercado", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(orcamentoRepository.existsByCategoriaId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoriaService.atualizar(
@@ -116,7 +124,7 @@ class CategoriaServiceTest {
     @Test
     void deveImpedirMudancaDeTipoComTransacaoVinculada() {
         Categoria categoria = categoria(1L, "Mercado", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(transacaoRepository.existsByCategoriaId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoriaService.atualizar(
@@ -130,7 +138,7 @@ class CategoriaServiceTest {
     @Test
     void deveExcluirCategoriaExistente() {
         Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
 
         categoriaService.excluir(1L);
 
@@ -140,7 +148,7 @@ class CategoriaServiceTest {
     @Test
     void deveImpedirExclusaoDeCategoriaComOrcamento() {
         Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(orcamentoRepository.existsByCategoriaId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoriaService.excluir(1L))
@@ -151,7 +159,7 @@ class CategoriaServiceTest {
     @Test
     void deveImpedirExclusaoDeCategoriaComTransacao() {
         Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(transacaoRepository.existsByCategoriaId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoriaService.excluir(1L))
@@ -162,7 +170,7 @@ class CategoriaServiceTest {
     @Test
     void deveImpedirExclusaoDeCategoriaComRecorrencia() {
         Categoria categoria = categoria(1L, "Lazer", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(recorrenciaRepository.existsByCategoriaId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoriaService.excluir(1L))
@@ -173,7 +181,7 @@ class CategoriaServiceTest {
     @Test
     void deveImpedirExclusaoDeCategoriaComCompraNoCartao() {
         Categoria categoria = categoria(1L, "Compras", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(categoria));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(categoria));
         when(compraCartaoRepository.existsByCategoriaId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoriaService.excluir(1L))
@@ -183,7 +191,7 @@ class CategoriaServiceTest {
 
     @Test
     void deveInformarQuandoCategoriaNaoExistir() {
-        when(categoriaRepository.findById(99L)).thenReturn(Optional.empty());
+        when(categoriaRepository.findByIdAndUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> categoriaService.buscarPorId(99L))
                 .isInstanceOf(RecursoNaoEncontradoException.class)

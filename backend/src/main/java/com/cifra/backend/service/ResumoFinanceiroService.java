@@ -8,6 +8,7 @@ import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
 import com.cifra.backend.repository.TotalPorCategoria;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,40 +24,44 @@ public class ResumoFinanceiroService {
     private final ContaRepository contaRepository;
     private final TransacaoRepository transacaoRepository;
     private final CompraCartaoRepository compraCartaoRepository;
+    private final UsuarioAtual usuarioAtual;
 
     public ResumoFinanceiroService(
             ContaRepository contaRepository,
             TransacaoRepository transacaoRepository,
-            CompraCartaoRepository compraCartaoRepository
+            CompraCartaoRepository compraCartaoRepository,
+            UsuarioAtual usuarioAtual
     ) {
         this.contaRepository = contaRepository;
         this.transacaoRepository = transacaoRepository;
         this.compraCartaoRepository = compraCartaoRepository;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
     public ResumoFinanceiroResponse gerar(LocalDate dataInicio, LocalDate dataFim) {
         validarPeriodo(dataInicio, dataFim);
+        Long usuarioId = usuarioAtual.id();
 
         BigDecimal totalReceitas = valorOuZero(transacaoRepository.somarValorPorTipoEPeriodo(
-                TipoOperacao.RECEITA, dataInicio, dataFim
+                usuarioId, TipoOperacao.RECEITA, dataInicio, dataFim
         ));
         BigDecimal totalDespesas = valorOuZero(transacaoRepository.somarValorPorTipoEPeriodo(
-                TipoOperacao.DESPESA, dataInicio, dataFim
-        )).add(valorOuZero(compraCartaoRepository.somarValorPorPeriodo(dataInicio, dataFim)));
+                usuarioId, TipoOperacao.DESPESA, dataInicio, dataFim
+        )).add(valorOuZero(compraCartaoRepository.somarValorPorPeriodo(usuarioId, dataInicio, dataFim)));
         BigDecimal receitasAteFim = valorOuZero(transacaoRepository.somarValorPorTipoAteEmContasAtivas(
-                TipoOperacao.RECEITA, dataFim
+                usuarioId, TipoOperacao.RECEITA, dataFim
         ));
         BigDecimal despesasAteFim = valorOuZero(transacaoRepository.somarValorPorTipoAteEmContasAtivas(
-                TipoOperacao.DESPESA, dataFim
+                usuarioId, TipoOperacao.DESPESA, dataFim
         ));
-        BigDecimal saldoTotal = valorOuZero(contaRepository.somarSaldosIniciaisAtivas())
+        BigDecimal saldoTotal = valorOuZero(contaRepository.somarSaldosIniciaisAtivas(usuarioId))
                 .add(receitasAteFim)
                 .subtract(despesasAteFim);
         Map<Long, DespesaPorCategoriaResponse> despesasAgrupadas = new LinkedHashMap<>();
         List<TotalPorCategoria> totaisPorCategoria = new java.util.ArrayList<>(transacaoRepository
-                .somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, dataInicio, dataFim));
-        totaisPorCategoria.addAll(compraCartaoRepository.somarPorCategoriaEPeriodo(dataInicio, dataFim));
+                .somarPorCategoriaETipoEPeriodo(usuarioId, TipoOperacao.DESPESA, dataInicio, dataFim));
+        totaisPorCategoria.addAll(compraCartaoRepository.somarPorCategoriaEPeriodo(usuarioId, dataInicio, dataFim));
         totaisPorCategoria.forEach(total -> despesasAgrupadas.merge(
                 total.getCategoriaId(),
                 new DespesaPorCategoriaResponse(total.getCategoriaId(), total.getCategoriaNome(), total.getTotal()),

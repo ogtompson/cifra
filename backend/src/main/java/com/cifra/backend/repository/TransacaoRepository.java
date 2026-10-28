@@ -10,9 +10,14 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
-    List<Transacao> findByContaIdOrderByDataDescIdDesc(Long contaId);
+    List<Transacao> findByContaUsuarioId(Long usuarioId, org.springframework.data.domain.Sort sort);
+
+    List<Transacao> findByContaIdAndContaUsuarioIdOrderByDataDescIdDesc(Long contaId, Long usuarioId);
+
+    Optional<Transacao> findByIdAndContaUsuarioId(Long id, Long usuarioId);
 
     long countByContaId(Long contaId);
 
@@ -43,10 +48,12 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             select coalesce(sum(transacao.valor), 0)
             from Transacao transacao
             where transacao.tipo = :tipo
+              and transacao.conta.usuario.id = :usuarioId
               and transacao.data between :dataInicio and :dataFim
               and (transacao.natureza is null or transacao.natureza <> com.cifra.backend.model.enums.NaturezaTransacao.PAGAMENTO_FATURA)
             """)
     BigDecimal somarValorPorTipoEPeriodo(
+            @Param("usuarioId") Long usuarioId,
             @Param("tipo") TipoOperacao tipo,
             @Param("dataInicio") LocalDate dataInicio,
             @Param("dataFim") LocalDate dataFim
@@ -56,9 +63,11 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             select coalesce(sum(transacao.valor), 0)
             from Transacao transacao
             where transacao.tipo = :tipo
+              and transacao.conta.usuario.id = :usuarioId
               and transacao.data <= :dataFim
             """)
     BigDecimal somarValorPorTipoAte(
+            @Param("usuarioId") Long usuarioId,
             @Param("tipo") TipoOperacao tipo,
             @Param("dataFim") LocalDate dataFim
     );
@@ -67,10 +76,12 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             select coalesce(sum(transacao.valor), 0)
             from Transacao transacao
             where transacao.tipo = :tipo
+              and transacao.conta.usuario.id = :usuarioId
               and transacao.data <= :dataFim
               and (transacao.conta.arquivada = false or transacao.conta.arquivada is null)
             """)
     BigDecimal somarValorPorTipoAteEmContasAtivas(
+            @Param("usuarioId") Long usuarioId,
             @Param("tipo") TipoOperacao tipo,
             @Param("dataFim") LocalDate dataFim
     );
@@ -81,12 +92,14 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
                    sum(transacao.valor) as total
             from Transacao transacao
             where transacao.tipo = :tipo
+              and transacao.conta.usuario.id = :usuarioId
               and transacao.data between :dataInicio and :dataFim
               and (transacao.natureza is null or transacao.natureza <> com.cifra.backend.model.enums.NaturezaTransacao.PAGAMENTO_FATURA)
             group by transacao.categoria.id, transacao.categoria.nome
             order by sum(transacao.valor) desc, transacao.categoria.nome asc
             """)
     List<TotalPorCategoria> somarPorCategoriaETipoEPeriodo(
+            @Param("usuarioId") Long usuarioId,
             @Param("tipo") TipoOperacao tipo,
             @Param("dataInicio") LocalDate dataInicio,
             @Param("dataFim") LocalDate dataFim

@@ -8,9 +8,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrcamentoCategoriaRepository extends JpaRepository<OrcamentoCategoria, Long> {
-    List<OrcamentoCategoria> findByMesReferenciaOrderByCategoriaNomeAsc(LocalDate mesReferencia);
+    List<OrcamentoCategoria> findByCategoriaUsuarioIdAndMesReferenciaOrderByCategoriaNomeAsc(
+            Long usuarioId,
+            LocalDate mesReferencia
+    );
 
     Optional<OrcamentoCategoria> findByCategoriaIdAndMesReferencia(Long categoriaId, LocalDate mesReferencia);
+
+    Optional<OrcamentoCategoria> findByIdAndCategoriaUsuarioId(Long id, Long usuarioId);
 
     boolean existsByCategoriaId(Long categoriaId);
 

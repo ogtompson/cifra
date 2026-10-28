@@ -14,6 +14,8 @@ import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.CartaoCreditoRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
+import com.cifra.backend.repository.UsuarioRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +39,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ContaServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private ContaRepository contaRepository;
 
@@ -47,6 +51,8 @@ class ContaServiceTest {
     private TransacaoRecorrenteRepository transacaoRecorrenteRepository;
     @Mock
     private CartaoCreditoRepository cartaoCreditoRepository;
+    @Mock
+    private UsuarioRepository usuarioRepository;
 
     private ContaService contaService;
 
@@ -56,7 +62,9 @@ class ContaServiceTest {
                 contaRepository,
                 transacaoRepository,
                 transacaoRecorrenteRepository,
-                cartaoCreditoRepository
+                cartaoCreditoRepository,
+                usuarioRepository,
+                new UsuarioAtualFixo(USUARIO_ID)
         );
     }
 
@@ -64,7 +72,7 @@ class ContaServiceTest {
     void deveListarContasOrdenadasPorNome() {
         Conta carteira = conta(1L, "Carteira", "50.00", TipoConta.DINHEIRO);
         Conta corrente = conta(2L, "Conta corrente", "1000.00", TipoConta.CORRENTE);
-        when(contaRepository.findByArquivadaFalseOrArquivadaIsNull(any(Sort.class)))
+        when(contaRepository.findAtivasByUsuarioId(org.mockito.ArgumentMatchers.eq(USUARIO_ID), any(Sort.class)))
                 .thenReturn(List.of(carteira, corrente));
 
         List<ContaResponse> resultado = contaService.listar(false);
@@ -118,7 +126,7 @@ class ContaServiceTest {
     @Test
     void deveAtualizarContaExistente() {
         Conta conta = conta(1L, "Poupança", "100.00", TipoConta.POUPANCA);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(contaRepository.save(conta)).thenReturn(conta);
 
         ContaResponse resultado = contaService.atualizar(
@@ -133,7 +141,7 @@ class ContaServiceTest {
     @Test
     void deveArquivarERestaurarConta() {
         Conta conta = conta(1L, "Nubank", "120.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(contaRepository.save(conta)).thenReturn(conta);
 
         ContaResponse arquivada = contaService.alterarArquivamento(
@@ -150,7 +158,7 @@ class ContaServiceTest {
     @Test
     void deveImpedirArquivamentoComCompromissosAtivos() {
         Conta conta = conta(1L, "Nubank", "120.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(transacaoRecorrenteRepository.countByContaIdAndAtivaTrue(1L)).thenReturn(1L);
 
         assertThatThrownBy(() -> contaService.alterarArquivamento(
@@ -165,7 +173,7 @@ class ContaServiceTest {
     @Test
     void deveExcluirContaSemDependencias() {
         Conta conta = conta(1L, "Carteira", "20.00", TipoConta.DINHEIRO);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
 
         contaService.excluir(1L, false);
 
@@ -175,7 +183,7 @@ class ContaServiceTest {
     @Test
     void deveInformarImpactoDaExclusao() {
         Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(transacaoRepository.countByContaId(1L)).thenReturn(12L);
         when(transacaoRecorrenteRepository.countByContaId(1L)).thenReturn(2L);
 
@@ -189,7 +197,7 @@ class ContaServiceTest {
     @Test
     void deveImpedirExclusaoSilenciosaDeContaComDependencias() {
         Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(transacaoRepository.countByContaId(1L)).thenReturn(12L);
         when(transacaoRecorrenteRepository.countByContaId(1L)).thenReturn(2L);
 
@@ -204,7 +212,7 @@ class ContaServiceTest {
     @Test
     void deveImpedirExclusaoDeContaUsadaPorCartao() {
         Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(cartaoCreditoRepository.countByContaPagamentoId(1L)).thenReturn(1L);
 
         assertThatThrownBy(() -> contaService.excluir(1L, true))
@@ -217,7 +225,7 @@ class ContaServiceTest {
     @Test
     void deveExcluirDependenciasAntesDaContaQuandoConfirmado() {
         Conta conta = conta(1L, "Nubank", "20.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(transacaoRepository.countByContaId(1L)).thenReturn(12L);
         when(transacaoRecorrenteRepository.countByContaId(1L)).thenReturn(2L);
 
@@ -235,7 +243,7 @@ class ContaServiceTest {
 
     @Test
     void deveInformarQuandoContaNaoExistir() {
-        when(contaRepository.findById(99L)).thenReturn(Optional.empty());
+        when(contaRepository.findByIdAndUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> contaService.buscarPorId(99L))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
@@ -245,7 +253,7 @@ class ContaServiceTest {
     @Test
     void deveCalcularSaldoPeloTipoDasOperacoes() {
         Conta conta = conta(1L, "Conta corrente", "1000.00", TipoConta.CORRENTE);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.RECEITA))
                 .thenReturn(new BigDecimal("2500.00"));
         when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.DESPESA))
@@ -266,7 +274,7 @@ class ContaServiceTest {
     @Test
     void deveUsarSaldoInicialQuandoNaoHouverTransacoes() {
         Conta conta = conta(1L, "Carteira", "80.00", TipoConta.DINHEIRO);
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.RECEITA))
                 .thenReturn(BigDecimal.ZERO);
         when(transacaoRepository.somarValorPorContaETipo(1L, TipoOperacao.DESPESA))

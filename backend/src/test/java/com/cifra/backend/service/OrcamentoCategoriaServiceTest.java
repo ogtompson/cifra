@@ -11,6 +11,7 @@ import com.cifra.backend.repository.OrcamentoCategoriaRepository;
 import com.cifra.backend.repository.TotalPorCategoria;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class OrcamentoCategoriaServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private OrcamentoCategoriaRepository orcamentoRepository;
     @Mock
@@ -45,7 +48,13 @@ class OrcamentoCategoriaServiceTest {
 
     @BeforeEach
     void configurar() {
-        service = new OrcamentoCategoriaService(orcamentoRepository, categoriaRepository, transacaoRepository, compraCartaoRepository);
+        service = new OrcamentoCategoriaService(
+                orcamentoRepository,
+                categoriaRepository,
+                transacaoRepository,
+                compraCartaoRepository,
+                new UsuarioAtualFixo(USUARIO_ID)
+        );
     }
 
     @Test
@@ -56,11 +65,11 @@ class OrcamentoCategoriaServiceTest {
         TotalPorCategoria compraCartao = mock(TotalPorCategoria.class);
         when(total.getCategoriaId()).thenReturn(1L);
         when(total.getTotal()).thenReturn(new BigDecimal("850.00"));
-        when(transacaoRepository.somarPorCategoriaETipoEPeriodo(TipoOperacao.DESPESA, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31))).thenReturn(List.of(total));
+        when(transacaoRepository.somarPorCategoriaETipoEPeriodo(USUARIO_ID, TipoOperacao.DESPESA, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31))).thenReturn(List.of(total));
         when(compraCartao.getCategoriaId()).thenReturn(1L);
         when(compraCartao.getTotal()).thenReturn(new BigDecimal("100.00"));
-        when(compraCartaoRepository.somarPorCategoriaEPeriodo(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31))).thenReturn(List.of(compraCartao));
-        when(orcamentoRepository.findByMesReferenciaOrderByCategoriaNomeAsc(LocalDate.of(2026, 10, 1))).thenReturn(List.of(orcamento));
+        when(compraCartaoRepository.somarPorCategoriaEPeriodo(USUARIO_ID, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31))).thenReturn(List.of(compraCartao));
+        when(orcamentoRepository.findByCategoriaUsuarioIdAndMesReferenciaOrderByCategoriaNomeAsc(USUARIO_ID, LocalDate.of(2026, 10, 1))).thenReturn(List.of(orcamento));
 
         List<OrcamentoCategoriaResponse> resultado = service.listar(LocalDate.of(2026, 10, 13));
 
@@ -75,7 +84,7 @@ class OrcamentoCategoriaServiceTest {
     @Test
     void deveCriarOrcamentoNormalizandoOMes() {
         Categoria moradia = new Categoria(1L, "Moradia", TipoOperacao.DESPESA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(moradia));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(moradia));
         when(orcamentoRepository.findByCategoriaIdAndMesReferencia(1L, LocalDate.of(2026, 10, 1))).thenReturn(Optional.empty());
         when(orcamentoRepository.save(any())).thenAnswer(invocacao -> {
             OrcamentoCategoria item = invocacao.getArgument(0);
@@ -96,9 +105,10 @@ class OrcamentoCategoriaServiceTest {
         TotalPorCategoria total = mock(TotalPorCategoria.class);
         when(total.getCategoriaId()).thenReturn(1L);
         when(total.getTotal()).thenReturn(new BigDecimal("650.00"));
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(moradia));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(moradia));
         when(orcamentoRepository.findByCategoriaIdAndMesReferencia(1L, LocalDate.of(2026, 10, 1))).thenReturn(Optional.empty());
         when(transacaoRepository.somarPorCategoriaETipoEPeriodo(
+                USUARIO_ID,
                 TipoOperacao.DESPESA,
                 LocalDate.of(2026, 10, 1),
                 LocalDate.of(2026, 10, 31)
@@ -117,7 +127,7 @@ class OrcamentoCategoriaServiceTest {
     @Test
     void deveRejeitarCategoriaDeReceita() {
         Categoria salario = new Categoria(1L, "Salário", TipoOperacao.RECEITA);
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(salario));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(salario));
 
         assertThatThrownBy(() -> service.criar(new OrcamentoCategoriaRequest(1L, LocalDate.of(2026, 10, 1), BigDecimal.TEN)))
                 .isInstanceOf(RegraNegocioException.class)
@@ -128,7 +138,7 @@ class OrcamentoCategoriaServiceTest {
     void deveRejeitarOrcamentoDuplicadoNoMesmoMes() {
         Categoria lazer = new Categoria(1L, "Lazer", TipoOperacao.DESPESA);
         OrcamentoCategoria existente = new OrcamentoCategoria(9L, lazer, LocalDate.of(2026, 10, 1), new BigDecimal("300.00"));
-        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(lazer));
+        when(categoriaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(lazer));
         when(orcamentoRepository.findByCategoriaIdAndMesReferencia(1L, LocalDate.of(2026, 10, 1))).thenReturn(Optional.of(existente));
 
         assertThatThrownBy(() -> service.criar(new OrcamentoCategoriaRequest(1L, LocalDate.of(2026, 10, 1), new BigDecimal("400.00"))))
@@ -139,7 +149,7 @@ class OrcamentoCategoriaServiceTest {
     @Test
     void deveExcluirOrcamentoExistente() {
         OrcamentoCategoria orcamento = new OrcamentoCategoria();
-        when(orcamentoRepository.findById(4L)).thenReturn(Optional.of(orcamento));
+        when(orcamentoRepository.findByIdAndCategoriaUsuarioId(4L, USUARIO_ID)).thenReturn(Optional.of(orcamento));
 
         service.excluir(4L);
 

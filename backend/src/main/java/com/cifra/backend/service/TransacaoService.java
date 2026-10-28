@@ -11,6 +11,7 @@ import com.cifra.backend.model.enums.NaturezaTransacao;
 import com.cifra.backend.repository.CategoriaRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +24,18 @@ public class TransacaoService {
     private final TransacaoRepository transacaoRepository;
     private final ContaRepository contaRepository;
     private final CategoriaRepository categoriaRepository;
+    private final UsuarioAtual usuarioAtual;
 
     public TransacaoService(
             TransacaoRepository transacaoRepository,
             ContaRepository contaRepository,
-            CategoriaRepository categoriaRepository
+            CategoriaRepository categoriaRepository,
+            UsuarioAtual usuarioAtual
     ) {
         this.transacaoRepository = transacaoRepository;
         this.contaRepository = contaRepository;
         this.categoriaRepository = categoriaRepository;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
@@ -40,10 +44,13 @@ public class TransacaoService {
         if (contaId == null) {
             Sort ordem = Sort.by(Sort.Direction.DESC, "data")
                     .and(Sort.by(Sort.Direction.DESC, "id"));
-            transacoes = transacaoRepository.findAll(ordem);
+            transacoes = transacaoRepository.findByContaUsuarioId(usuarioAtual.id(), ordem);
         } else {
             validarContaExistente(contaId);
-            transacoes = transacaoRepository.findByContaIdOrderByDataDescIdDesc(contaId);
+            transacoes = transacaoRepository.findByContaIdAndContaUsuarioIdOrderByDataDescIdDesc(
+                    contaId,
+                    usuarioAtual.id()
+            );
         }
 
         return transacoes.stream().map(this::paraResponse).toList();
@@ -77,27 +84,27 @@ public class TransacaoService {
     }
 
     private Transacao buscarEntidade(Long id) {
-        return transacaoRepository.findById(id)
+        return transacaoRepository.findByIdAndContaUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Transação não encontrada com o id " + id
                 ));
     }
 
     private Conta buscarConta(Long id) {
-        return contaRepository.findById(id)
+        return contaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Conta não encontrada com o id " + id
                 ));
     }
 
     private void validarContaExistente(Long id) {
-        if (!contaRepository.existsById(id)) {
+        if (contaRepository.findByIdAndUsuarioId(id, usuarioAtual.id()).isEmpty()) {
             throw new RecursoNaoEncontradoException("Conta não encontrada com o id " + id);
         }
     }
 
     private Categoria buscarCategoria(Long id) {
-        return categoriaRepository.findById(id)
+        return categoriaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Categoria não encontrada com o id " + id
                 ));

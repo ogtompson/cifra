@@ -7,6 +7,7 @@ import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.TotalPorCategoria;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.CompraCartaoRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ResumoFinanceiroServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private ContaRepository contaRepository;
 
@@ -41,7 +44,8 @@ class ResumoFinanceiroServiceTest {
     @BeforeEach
     void configurar() {
         resumoFinanceiroService = new ResumoFinanceiroService(
-                contaRepository, transacaoRepository, compraCartaoRepository
+                contaRepository, transacaoRepository, compraCartaoRepository,
+                new UsuarioAtualFixo(USUARIO_ID)
         );
     }
 
@@ -51,27 +55,27 @@ class ResumoFinanceiroServiceTest {
         LocalDate fim = LocalDate.of(2026, 9, 30);
         TotalPorCategoria compraCartao = org.mockito.Mockito.mock(TotalPorCategoria.class);
         when(transacaoRepository.somarValorPorTipoEPeriodo(
-                TipoOperacao.RECEITA, inicio, fim
+                USUARIO_ID, TipoOperacao.RECEITA, inicio, fim
         )).thenReturn(new BigDecimal("3000.00"));
         when(transacaoRepository.somarValorPorTipoEPeriodo(
-                TipoOperacao.DESPESA, inicio, fim
+                USUARIO_ID, TipoOperacao.DESPESA, inicio, fim
         )).thenReturn(new BigDecimal("1200.00"));
-        when(transacaoRepository.somarValorPorTipoAteEmContasAtivas(TipoOperacao.RECEITA, fim))
+        when(transacaoRepository.somarValorPorTipoAteEmContasAtivas(USUARIO_ID, TipoOperacao.RECEITA, fim))
                 .thenReturn(new BigDecimal("5000.00"));
-        when(transacaoRepository.somarValorPorTipoAteEmContasAtivas(TipoOperacao.DESPESA, fim))
+        when(transacaoRepository.somarValorPorTipoAteEmContasAtivas(USUARIO_ID, TipoOperacao.DESPESA, fim))
                 .thenReturn(new BigDecimal("1800.00"));
-        when(contaRepository.somarSaldosIniciaisAtivas()).thenReturn(new BigDecimal("1000.00"));
+        when(contaRepository.somarSaldosIniciaisAtivas(USUARIO_ID)).thenReturn(new BigDecimal("1000.00"));
         when(totalAlimentacao.getCategoriaId()).thenReturn(2L);
         when(totalAlimentacao.getCategoriaNome()).thenReturn("Alimentação");
         when(totalAlimentacao.getTotal()).thenReturn(new BigDecimal("700.00"));
         when(transacaoRepository.somarPorCategoriaETipoEPeriodo(
-                TipoOperacao.DESPESA, inicio, fim
+                USUARIO_ID, TipoOperacao.DESPESA, inicio, fim
         )).thenReturn(List.of(totalAlimentacao));
-        when(compraCartaoRepository.somarValorPorPeriodo(inicio, fim)).thenReturn(new BigDecimal("300.00"));
+        when(compraCartaoRepository.somarValorPorPeriodo(USUARIO_ID, inicio, fim)).thenReturn(new BigDecimal("300.00"));
         when(compraCartao.getCategoriaId()).thenReturn(2L);
         when(compraCartao.getCategoriaNome()).thenReturn("Alimentação");
         when(compraCartao.getTotal()).thenReturn(new BigDecimal("300.00"));
-        when(compraCartaoRepository.somarPorCategoriaEPeriodo(inicio, fim)).thenReturn(List.of(compraCartao));
+        when(compraCartaoRepository.somarPorCategoriaEPeriodo(USUARIO_ID, inicio, fim)).thenReturn(List.of(compraCartao));
 
         ResumoFinanceiroResponse resultado = resumoFinanceiroService.gerar(inicio, fim);
 
@@ -91,7 +95,7 @@ class ResumoFinanceiroServiceTest {
         LocalDate inicio = LocalDate.of(2026, 9, 1);
         LocalDate fim = LocalDate.of(2026, 9, 30);
         when(transacaoRepository.somarPorCategoriaETipoEPeriodo(
-                TipoOperacao.DESPESA, inicio, fim
+                USUARIO_ID, TipoOperacao.DESPESA, inicio, fim
         )).thenReturn(List.of());
 
         ResumoFinanceiroResponse resultado = resumoFinanceiroService.gerar(inicio, fim);

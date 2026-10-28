@@ -4,6 +4,7 @@ import com.cifra.backend.dto.CartaoCreditoRequest;
 import com.cifra.backend.dto.CompraCartaoRequest;
 import com.cifra.backend.dto.FaturaCartaoResponse;
 import com.cifra.backend.dto.PagamentoFaturaRequest;
+import com.cifra.backend.exception.RecursoNaoEncontradoException;
 import com.cifra.backend.exception.RegraNegocioException;
 import com.cifra.backend.model.CartaoCredito;
 import com.cifra.backend.model.Categoria;
@@ -20,6 +21,7 @@ import com.cifra.backend.repository.CompraCartaoRepository;
 import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.PagamentoFaturaRepository;
 import com.cifra.backend.repository.TransacaoRepository;
+import com.cifra.backend.security.UsuarioAtualFixo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +46,8 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class CartaoCreditoServiceTest {
 
+    private static final Long USUARIO_ID = 7L;
+
     @Mock private CartaoCreditoRepository cartaoRepository;
     @Mock private CompraCartaoRepository compraRepository;
     @Mock private ContaRepository contaRepository;
@@ -59,7 +63,16 @@ class CartaoCreditoServiceTest {
     @BeforeEach
     void configurar() {
         Clock clock = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneId.of("America/Sao_Paulo"));
-        service = new CartaoCreditoService(cartaoRepository, compraRepository, contaRepository, categoriaRepository, pagamentoRepository, transacaoRepository, clock);
+        service = new CartaoCreditoService(
+                cartaoRepository,
+                compraRepository,
+                contaRepository,
+                categoriaRepository,
+                pagamentoRepository,
+                transacaoRepository,
+                clock,
+                new UsuarioAtualFixo(USUARIO_ID)
+        );
         conta = new Conta(1L, "Nubank", BigDecimal.ZERO, TipoConta.CORRENTE);
         categoria = new Categoria(2L, "Compras", TipoOperacao.DESPESA);
         cartao = new CartaoCredito(3L, "Ultravioleta", "Mastercard", "1234", new BigDecimal("5000.00"), 28, 5, conta);
@@ -67,7 +80,7 @@ class CartaoCreditoServiceTest {
 
     @Test
     void deveCriarCartaoVinculadoAContaAtiva() {
-        when(contaRepository.findById(1L)).thenReturn(Optional.of(conta));
+        when(contaRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(conta));
         when(cartaoRepository.save(any())).thenAnswer(invocacao -> {
             CartaoCredito salvo = invocacao.getArgument(0);
             salvo.setId(3L);
@@ -82,10 +95,18 @@ class CartaoCreditoServiceTest {
     }
 
     @Test
+    void deveOcultarCartaoQuePertenceAOutroUsuario() {
+        when(cartaoRepository.findByIdAndContaPagamentoUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.projetarFaturas(99L, LocalDate.of(2026, 10, 1), 1))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+    }
+
+    @Test
     void deveProjetarCompraParceladaSemPerderCentavos() {
         CompraCartao compra = new CompraCartao(4L, "Notebook", new BigDecimal("100.00"), LocalDate.of(2026, 10, 20), 3, cartao, categoria);
-        when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));
-        when(compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(3L)).thenReturn(List.of(compra));
+        when(cartaoRepository.findByIdAndContaPagamentoUsuarioId(3L, USUARIO_ID)).thenReturn(Optional.of(cartao));
+        when(compraRepository.findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(3L, USUARIO_ID)).thenReturn(List.of(compra));
 
         List<FaturaCartaoResponse> faturas = service.projetarFaturas(3L, LocalDate.of(2026, 11, 1), 3);
 
@@ -98,9 +119,9 @@ class CartaoCreditoServiceTest {
 
     @Test
     void deveRejeitarCompraAcimaDoLimiteDisponivel() {
-        when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
-        when(compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(3L)).thenReturn(List.of());
+        when(cartaoRepository.findByIdAndContaPagamentoUsuarioId(3L, USUARIO_ID)).thenReturn(Optional.of(cartao));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoria));
+        when(compraRepository.findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(3L, USUARIO_ID)).thenReturn(List.of());
 
         CompraCartaoRequest request = new CompraCartaoRequest("Viagem", new BigDecimal("5200.00"), LocalDate.of(2026, 10, 13), 1, 3L, 2L);
 
@@ -112,8 +133,8 @@ class CartaoCreditoServiceTest {
     @Test
     void deveRejeitarCompraQuandoContaDoCartaoEstaArquivada() {
         conta.setArquivada(true);
-        when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+        when(cartaoRepository.findByIdAndContaPagamentoUsuarioId(3L, USUARIO_ID)).thenReturn(Optional.of(cartao));
+        when(categoriaRepository.findByIdAndUsuarioId(2L, USUARIO_ID)).thenReturn(Optional.of(categoria));
 
         CompraCartaoRequest request = new CompraCartaoRequest(
                 "Viagem", new BigDecimal("200.00"), LocalDate.of(2026, 10, 13), 1, 3L, 2L
@@ -127,8 +148,8 @@ class CartaoCreditoServiceTest {
     @Test
     void devePagarFaturaCriandoSaidaEspecialNaConta() {
         CompraCartao compra = new CompraCartao(4L, "Notebook", new BigDecimal("900.00"), LocalDate.of(2026, 10, 20), 3, cartao, categoria);
-        when(cartaoRepository.findById(3L)).thenReturn(Optional.of(cartao));
-        when(compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(3L)).thenReturn(List.of(compra));
+        when(cartaoRepository.findByIdAndContaPagamentoUsuarioId(3L, USUARIO_ID)).thenReturn(Optional.of(cartao));
+        when(compraRepository.findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(3L, USUARIO_ID)).thenReturn(List.of(compra));
         when(pagamentoRepository.findByCartaoIdAndMesReferencia(3L, LocalDate.of(2026, 11, 1))).thenReturn(Optional.empty());
         when(transacaoRepository.save(any())).thenAnswer(invocacao -> {
             Transacao transacao = invocacao.getArgument(0);
@@ -158,8 +179,8 @@ class CartaoCreditoServiceTest {
         CompraCartao compra = new CompraCartao(4L, "Notebook", new BigDecimal("900.00"), LocalDate.of(2026, 10, 20), 3, cartao, categoria);
         PagamentoFatura pagamento = new PagamentoFatura();
         pagamento.setMesReferencia(LocalDate.of(2026, 11, 1));
-        when(cartaoRepository.findAllByOrderByNomeAsc()).thenReturn(List.of(cartao));
-        when(compraRepository.findByCartaoIdOrderByDataCompraDescIdDesc(3L)).thenReturn(List.of(compra));
+        when(cartaoRepository.findByContaPagamentoUsuarioIdOrderByNomeAsc(USUARIO_ID)).thenReturn(List.of(cartao));
+        when(compraRepository.findByCartaoIdAndCartaoContaPagamentoUsuarioIdOrderByDataCompraDescIdDesc(3L, USUARIO_ID)).thenReturn(List.of(compra));
         when(pagamentoRepository.findByCartaoId(3L)).thenReturn(List.of(pagamento));
 
         var resposta = service.listarCartoes().getFirst();

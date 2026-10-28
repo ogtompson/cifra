@@ -5,11 +5,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Sort;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TransacaoRecorrenteRepository extends JpaRepository<TransacaoRecorrente, Long> {
     List<TransacaoRecorrente> findByAtivaTrue();
 
-    List<TransacaoRecorrente> findByAtiva(boolean ativa, Sort sort);
+    List<TransacaoRecorrente> findByContaUsuarioId(Long usuarioId, Sort sort);
+
+    List<TransacaoRecorrente> findByAtivaAndContaUsuarioId(boolean ativa, Long usuarioId, Sort sort);
+
+    Optional<TransacaoRecorrente> findByIdAndContaUsuarioId(Long id, Long usuarioId);
 
     long countByContaId(Long contaId);
 

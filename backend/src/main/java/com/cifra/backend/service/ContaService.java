@@ -13,6 +13,8 @@ import com.cifra.backend.repository.ContaRepository;
 import com.cifra.backend.repository.CartaoCreditoRepository;
 import com.cifra.backend.repository.TransacaoRepository;
 import com.cifra.backend.repository.TransacaoRecorrenteRepository;
+import com.cifra.backend.repository.UsuarioRepository;
+import com.cifra.backend.security.UsuarioAtual;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,25 +29,31 @@ public class ContaService {
     private final TransacaoRepository transacaoRepository;
     private final TransacaoRecorrenteRepository transacaoRecorrenteRepository;
     private final CartaoCreditoRepository cartaoCreditoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final UsuarioAtual usuarioAtual;
 
     public ContaService(
             ContaRepository contaRepository,
             TransacaoRepository transacaoRepository,
             TransacaoRecorrenteRepository transacaoRecorrenteRepository,
-            CartaoCreditoRepository cartaoCreditoRepository
+            CartaoCreditoRepository cartaoCreditoRepository,
+            UsuarioRepository usuarioRepository,
+            UsuarioAtual usuarioAtual
     ) {
         this.contaRepository = contaRepository;
         this.transacaoRepository = transacaoRepository;
         this.transacaoRecorrenteRepository = transacaoRecorrenteRepository;
         this.cartaoCreditoRepository = cartaoCreditoRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Transactional(readOnly = true)
     public List<ContaResponse> listar(boolean incluirArquivadas) {
         Sort ordenacao = Sort.by(Sort.Direction.ASC, "nome");
         List<Conta> contas = incluirArquivadas
-                ? contaRepository.findAll(ordenacao)
-                : contaRepository.findByArquivadaFalseOrArquivadaIsNull(ordenacao);
+                ? contaRepository.findByUsuarioId(usuarioAtual.id(), ordenacao)
+                : contaRepository.findAtivasByUsuarioId(usuarioAtual.id(), ordenacao);
         return contas
                 .stream()
                 .map(this::paraResponse)
@@ -80,6 +88,7 @@ public class ContaService {
     public ContaResponse criar(ContaRequest request) {
         Conta conta = new Conta();
         atualizarDados(conta, request);
+        conta.setUsuario(usuarioRepository.getReferenceById(usuarioAtual.id()));
         return paraResponse(contaRepository.save(conta));
     }
 
@@ -152,7 +161,7 @@ public class ContaService {
     }
 
     private Conta buscarEntidade(Long id) {
-        return contaRepository.findById(id)
+        return contaRepository.findByIdAndUsuarioId(id, usuarioAtual.id())
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Conta não encontrada com o id " + id
                 ));
