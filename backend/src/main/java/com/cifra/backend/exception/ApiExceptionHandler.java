@@ -32,6 +32,16 @@ public class ApiExceptionHandler {
         return problema;
     }
 
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ProblemDetail tratarCredenciaisInvalidas(CredenciaisInvalidasException exception) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED,
+                exception.getMessage()
+        );
+        problema.setTitle("Não foi possível entrar");
+        return problema;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail tratarValidacao(MethodArgumentNotValidException exception) {
         Map<String, String> erros = new LinkedHashMap<>();

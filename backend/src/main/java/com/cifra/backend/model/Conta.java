@@ -34,6 +34,10 @@ public class Conta {
     @Column
     private Boolean arquivada = false;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
+
     public Conta(Long id, String nome, BigDecimal saldoInicial, TipoConta tipo) {
         this.id = id;
         this.nome = nome;

@@ -25,4 +25,14 @@ public class Categoria {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoOperacao tipo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
+
+    public Categoria(Long id, String nome, TipoOperacao tipo) {
+        this.id = id;
+        this.nome = nome;
+        this.tipo = tipo;
+    }
 }
